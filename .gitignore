@@ -1,3 +1,4 @@
 /.env
 /content.txt
 /Генератор ТЗ.txt
+node_modules
