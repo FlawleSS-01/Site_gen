@@ -320,367 +320,77 @@ function generatePageJsx(pageName, componentName, data, imagePath, offerUrl, col
   const emojis = ['🎰', '🃏', '💰', '🎲', '🎯', '🔥', '⭐', '🏆', '💎', '🚀', '♠️', '🎁'];
 
   function renderSections(secsArr, startIdx = 0) {
-    const animClasses = ['animate-float', 'animate-pulse', 'animate-shimmer', 'animate-bounce', 'animate-glow', 'animate-slide-up', 'animate-wiggle', 'animate-fade-in', 'animate-scale-in'];
-    const bgPatterns = [
-      `bg-slate-800/50`, `bg-slate-900/60`, `bg-slate-800/30`, `bg-slate-900/50`, `bg-slate-800/40`,
-      `bg-slate-900/70`, `bg-gradient-to-r from-slate-800/50 to-slate-900/50`, `bg-gradient-to-b from-slate-800/40 to-slate-900/60`,
-      `bg-gradient-to-br from-${p}-900/10 to-slate-900/60`, `bg-slate-800/60`, `bg-slate-900/40`, `bg-gradient-to-tr from-slate-800/60 to-slate-900/50`
-    ];
-    const listHtml = (sec) => sec.type === 'list'
-      ? `<ul className="space-y-3 text-${bg}-300">${String(sec.content).split('\n').filter(Boolean).map(l => `<li className="flex gap-2"><span className="text-${p}-500">✓</span>${esc(l.trim())}</li>`).join('')}</ul>`
-      : `<p className="text-${bg}-300 leading-relaxed">${esc(sec.content)}</p>`;
-    const listGridHtml = (sec) => sec.type === 'list'
-      ? `<div className="grid sm:grid-cols-2 gap-3">${String(sec.content).split('\n').filter(Boolean).map(l => `<div className="flex gap-2 text-${bg}-300"><span className="text-${p}-500 flex-shrink-0">✓</span>${esc(l.trim())}</div>`).join('')}</div>`
-      : `<p className="text-${bg}-300 leading-relaxed text-lg">${esc(sec.content)}</p>`;
-    const ctaHtml = (sec) => sec.hasCTA ? `<div className="mt-6"><CTAButton text="${ctaText}" /></div>` : '';
-    const ctaSecHtml = (sec) => sec.hasCTA ? `<CTAButton text="${ctaText}" variant="secondary" />` : '';
-
+    const contentHtml = (s) => {
+      if (s.type === 'list') {
+        const lines = String(s.content).split('\n').filter(Boolean);
+        return `<ul className="space-y-3 text-${bg}-300">${lines.map(l => `<li className="flex gap-2"><span className="text-${p}-500 shrink-0">✓</span><span>${esc(l.trim())}</span></li>`).join('')}</ul>`;
+      }
+      return `<p className="text-${bg}-300 leading-relaxed">${esc(s.content)}</p>`;
+    };
+    const cta = (s, v) => s.hasCTA ? (v === 2 ? `<CTAButton text="${ctaText}" variant="secondary" />` : `<div className="mt-6"><CTAButton text="${ctaText}"${v ? ' variant="secondary"' : ''} /></div>`) : '';
+    const em = (offset) => emojis[(startIdx + offset) % emojis.length];
+    const used = new Set();
     return secsArr.map((sec, i) => {
       const idx = startIdx + i;
-      const anim = animClasses[(layoutSeed + i * 3) % animClasses.length];
-      const bgPat = bgPatterns[(layoutSeed + i * 11) % bgPatterns.length];
-
-    const sectionTemplates = [
-      (sec) => `<section className="py-16 ${bgPat}">
-        <div className="section-container">
-          <div className="grid lg:grid-cols-2 gap-12 items-center">
-            <div className="${idx % 2 !== 0 ? 'lg:order-2' : ''}">
-              <h2 className="text-2xl font-bold text-${p}-400 mb-4">${esc(sec.title)}</h2>
-              ${listHtml(sec)}${ctaHtml(sec)}
-            </div>
-            <div className="bg-gradient-to-br from-${p}-500/10 to-${a}-500/10 rounded-2xl aspect-video flex items-center justify-center border border-${p}-500/20 ${idx % 2 !== 0 ? 'lg:order-1' : ''}">
-              <span className="text-6xl animate-float">${emojis[idx % emojis.length]}</span>
-            </div>
-          </div>
-        </div>
-      </section>`,
-      (sec) => `<section className="py-16 bg-slate-900/60">
-        <div className="section-container">
-          <div className="bg-gradient-to-r from-${p}-500/10 to-${a}-500/10 rounded-2xl p-8 md:p-12 border border-${p}-500/20">
-            <h2 className="text-2xl font-bold text-${p}-400 mb-4">${esc(sec.title)}</h2>
-            ${listGridHtml(sec)}${sec.hasCTA ? `<div className="mt-8"><CTAButton text="${ctaText}" /></div>` : ''}
-          </div>
-        </div>
-      </section>`,
-      (sec) => `<section className="py-16 bg-slate-800/30">
-        <div className="section-container text-center max-w-3xl mx-auto">
-          <span className="text-4xl block mb-4">${emojis[(idx + 3) % emojis.length]}</span>
-          <h2 className="text-2xl font-bold text-white mb-4">${esc(sec.title)}</h2>
-          <p className="text-${bg}-300 leading-relaxed mb-6">${esc(trunc(sec.content, 200))}</p>
-          ${sec.hasCTA ? `<div className="mt-4">${ctaSecHtml(sec)}</div>` : ''}
-        </div>
-      </section>`,
-      (sec) => `<section className="py-16 bg-slate-900/50">
-        <div className="section-container max-w-4xl mx-auto">
-          <div className="relative pl-8 border-l-2 border-${p}-500/50">
-            <div className="absolute -left-[9px] top-0 w-4 h-4 rounded-full bg-${p}-500 border-2 border-slate-900"></div>
-            <h2 className="text-2xl font-bold text-${p}-400 mb-4">${esc(sec.title)}</h2>
-            ${sec.type === 'list' ? `<ul className="space-y-2 text-${bg}-300">${String(sec.content).split('\n').filter(Boolean).map(l => `<li className="flex gap-2"><span className="text-${p}-500">→</span>${esc(l.trim())}</li>`).join('')}</ul>` : `<p className="text-${bg}-300 leading-relaxed">${esc(sec.content)}</p>`}
-            ${ctaHtml(sec)}
-          </div>
-        </div>
-      </section>`,
-      (sec) => `<section className="py-16 bg-slate-800/40">
-        <div className="section-container">
-          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div className="lg:col-span-2 p-6 rounded-2xl bg-slate-800/80 border border-${p}-500/20">
-              <span className="text-3xl block mb-3">${emojis[(idx + 5) % emojis.length]}</span>
-              <h2 className="text-xl font-bold text-white mb-2">${esc(sec.title)}</h2>
-              <p className="text-${bg}-400 text-sm">${esc(trunc(sec.content, 100))}</p>
-            </div>
-            <div className="p-6 rounded-2xl bg-slate-800/60 border border-${a}-500/20 flex items-center justify-center"><span className="text-5xl">${emojis[(idx + 7) % emojis.length]}</span></div>
-            <div className="p-6 rounded-2xl bg-slate-800/60 border border-${a}-500/20 flex items-center justify-center"><span className="text-5xl">${emojis[(idx + 9) % emojis.length]}</span></div>
-            ${sec.hasCTA ? `<div className="lg:col-span-2 flex items-center justify-center">${ctaSecHtml(sec)}</div>` : ''}
-          </div>
-        </div>
-      </section>`,
-      (sec) => `<section className="py-16 bg-slate-900/60">
-        <div className="section-container">
-          <div className="columns-1 md:columns-2 gap-8 space-y-6">
-            <div className="break-inside-avoid p-6 rounded-2xl bg-slate-800/80 border border-${p}-500/20">
-              <h2 className="text-xl font-bold text-${p}-400 mb-3">${esc(sec.title)}</h2>
-              <p className="text-${bg}-300 text-sm leading-relaxed">${esc(trunc(sec.content, 150))}</p>
-              ${sec.hasCTA ? `<div className="mt-4">${ctaSecHtml(sec)}</div>` : ''}
-            </div>
-          </div>
-        </div>
-      </section>`,
-      (sec) => `<section className="py-16 bg-slate-800/30">
-        <div className="section-container">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="md:col-span-2 p-8 rounded-2xl bg-gradient-to-br from-${p}-500/10 to-${a}-500/10 border border-${p}-500/20">
-              <h2 className="text-2xl font-bold text-white mb-4">${esc(sec.title)}</h2>
-              ${sec.type === 'list' ? `<ul className="space-y-2 text-${bg}-300">${String(sec.content).split('\n').filter(Boolean).map(l => `<li className="flex gap-2"><span className="text-${p}-500">•</span>${esc(l.trim())}</li>`).join('')}</ul>` : `<p className="text-${bg}-300 leading-relaxed">${esc(sec.content)}</p>`}
-            </div>
-            <div className="flex flex-col gap-4">
-              <div className="flex-1 rounded-2xl bg-slate-800/80 border border-${p}-500/20 flex items-center justify-center"><span className="text-5xl">${emojis[idx % emojis.length]}</span></div>
-              ${sec.hasCTA ? ctaSecHtml(sec) : ''}
-            </div>
-          </div>
-        </div>
-      </section>`,
-      (sec) => `<section className="py-16 bg-slate-900/50 relative overflow-hidden">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_80%,rgba(251,191,36,0.08)_0%,transparent_50%)]"></div>
-        <div className="section-container relative">
-          <div className="flex flex-wrap gap-4">
-            <div className="flex-1 min-w-[280px] p-6 rounded-2xl bg-slate-800/90 border border-${p}-500/30 hover:border-${p}-400/50 transition-all duration-300 shadow-lg hover:shadow-${p}-500/20">
-              <span className="text-4xl block mb-3 ${anim}">${emojis[(idx + 2) % emojis.length]}</span>
-              <h2 className="text-xl font-bold text-${p}-400 mb-2">${esc(sec.title)}</h2>
-              <p className="text-${bg}-300 text-sm leading-relaxed">${esc(trunc(sec.content, 120))}</p>
-              ${sec.hasCTA ? `<div className="mt-4">${ctaSecHtml(sec)}</div>` : ''}
-            </div>
-          </div>
-        </div>
-      </section>`,
-      (sec) => `<section className="py-16 bg-slate-800/40">
-        <div className="section-container">
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-            <div className="col-span-2 row-span-2 p-6 rounded-2xl bg-gradient-to-br from-${p}-600/20 to-${a}-600/20 border-2 border-${p}-500/40 flex flex-col justify-center">
-              <span className="text-5xl ${anim} block mb-3">${emojis[idx % emojis.length]}</span>
-              <h2 className="text-xl font-bold text-white mb-2">${esc(sec.title)}</h2>
-              <p className="text-${bg}-300 text-sm">${esc(trunc(sec.content, 90))}</p>
-            </div>
-            <div className="p-4 rounded-xl bg-slate-800/80 border border-${p}-500/20 flex items-center justify-center"><span className="text-3xl">${emojis[(idx + 1) % emojis.length]}</span></div>
-            <div className="p-4 rounded-xl bg-slate-800/80 border border-${a}-500/20 flex items-center justify-center"><span className="text-3xl">${emojis[(idx + 2) % emojis.length]}</span></div>
-            <div className="p-4 rounded-xl bg-slate-800/80 border border-${p}-500/20 flex items-center justify-center"><span className="text-3xl">${emojis[(idx + 3) % emojis.length]}</span></div>
-            <div className="p-4 rounded-xl bg-slate-800/80 border border-${a}-500/20 flex items-center justify-center"><span className="text-3xl">${emojis[(idx + 4) % emojis.length]}</span></div>
-            ${sec.hasCTA ? `<div className="col-span-2 flex items-center justify-center">${ctaSecHtml(sec)}</div>` : ''}
-          </div>
-        </div>
-      </section>`,
-      (sec) => `<section className="py-16 bg-slate-900/60">
-        <div className="section-container">
-          <div className="max-w-2xl mx-auto">
-            <div className="relative flex gap-6">
-              <div className="absolute left-[11px] top-0 bottom-0 w-0.5 bg-gradient-to-b from-${p}-500 via-${a}-500 to-transparent"></div>
-              <div className="flex-shrink-0 w-6 h-6 rounded-full bg-${p}-500 border-4 border-slate-900 mt-1 ${anim}"></div>
-              <div className="pb-8">
-                <h2 className="text-2xl font-bold text-${p}-400 mb-3">${esc(sec.title)}</h2>
-                ${sec.type === 'list' ? `<ul className="space-y-2 text-${bg}-300">${String(sec.content).split('\n').filter(Boolean).map(l => `<li className="flex gap-2"><span className="text-${p}-500">▸</span>${esc(l.trim())}</li>`).join('')}</ul>` : `<p className="text-${bg}-300 leading-relaxed">${esc(sec.content)}</p>`}
-                ${sec.hasCTA ? `<div className="mt-4">${ctaSecHtml(sec)}</div>` : ''}
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>`,
-      (sec) => `<section className="py-16 ${bgPat}">
-        <div className="section-container">
-          <div className="grid md:grid-cols-3 gap-6">
-            <div className="md:col-span-2 p-6 rounded-2xl bg-slate-800/70 border-l-4 border-${p}-500">
-              <h2 className="text-2xl font-bold text-${p}-400 mb-4">${esc(sec.title)}</h2>
-              ${listHtml(sec)}${ctaHtml(sec)}
-            </div>
-            <div className="p-6 rounded-2xl bg-gradient-to-b from-${p}-500/20 to-${a}-500/10 border border-${p}-500/30 flex items-center justify-center">
-              <span className="text-7xl ${anim}">${emojis[(idx + 4) % emojis.length]}</span>
-            </div>
-          </div>
-        </div>
-      </section>`,
-      (sec) => `<section className="py-16 bg-slate-900/50">
-        <div className="section-container">
-          <div className="grid sm:grid-cols-2 md:grid-cols-4 gap-4">
-            <div className="sm:col-span-2 p-6 rounded-2xl bg-slate-800/90 border border-${p}-500/20">
-              <span className="text-4xl block mb-3">${emojis[idx % emojis.length]}</span>
-              <h2 className="text-xl font-bold text-white mb-2">${esc(sec.title)}</h2>
-              <p className="text-${bg}-400 text-sm">${esc(trunc(sec.content, 130))}</p>
-              ${sec.hasCTA ? `<div className="mt-4">${ctaSecHtml(sec)}</div>` : ''}
-            </div>
-            <div className="p-4 rounded-xl bg-slate-800/60 flex items-center justify-center"><span className="text-4xl">${emojis[(idx + 1) % emojis.length]}</span></div>
-            <div className="p-4 rounded-xl bg-slate-800/60 flex items-center justify-center"><span className="text-4xl">${emojis[(idx + 2) % emojis.length]}</span></div>
-          </div>
-        </div>
-      </section>`,
-      (sec) => `<section className="py-16 bg-slate-800/30">
-        <div className="section-container max-w-5xl mx-auto">
-          <div className="flex flex-col md:flex-row gap-8 items-start">
-            <div className="flex-shrink-0 w-16 h-16 rounded-2xl bg-gradient-to-br from-${p}-500 to-${a}-600 flex items-center justify-center text-3xl">${emojis[(idx + 6) % emojis.length]}</div>
-            <div className="flex-1">
-              <h2 className="text-2xl font-bold text-white mb-4">${esc(sec.title)}</h2>
-              ${listHtml(sec)}${ctaHtml(sec)}
-            </div>
-          </div>
-        </div>
-      </section>`,
-      (sec) => `<section className="py-16 ${bgPat}">
-        <div className="section-container">
-          <div className="max-w-3xl mx-auto text-center">
-            <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-${p}-500/20 border-2 border-${p}-500/50 mb-6">
-              <span className="text-4xl">${emojis[(idx + 8) % emojis.length]}</span>
-            </div>
-            <h2 className="text-2xl font-bold text-${p}-400 mb-4">${esc(sec.title)}</h2>
-            <p className="text-${bg}-300 leading-relaxed mb-6">${esc(trunc(sec.content, 220))}</p>
-            ${sec.hasCTA ? `<div className="mt-6">${ctaSecHtml(sec)}</div>` : ''}
-          </div>
-        </div>
-      </section>`,
-      (sec) => `<section className="py-16 bg-slate-900/60">
-        <div className="section-container">
-          <div className="grid lg:grid-cols-2 gap-12">
-            <div className="order-2 lg:order-1 p-8 rounded-2xl bg-slate-800/80 border border-${p}-500/20">
-              <h2 className="text-2xl font-bold text-${p}-400 mb-4">${esc(sec.title)}</h2>
-              ${listHtml(sec)}${ctaHtml(sec)}
-            </div>
-            <div className="order-1 lg:order-2 flex items-center justify-center">
-              <div className="w-48 h-48 rounded-3xl bg-gradient-to-br from-${p}-500/30 to-${a}-500/30 border-2 border-${p}-500/40 flex items-center justify-center ${anim}">
-                <span className="text-7xl">${emojis[(idx + 10) % emojis.length]}</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>`,
-      (sec) => `<section className="py-16 bg-slate-800/40">
-        <div className="section-container">
-          <div className="relative pl-8">
-            <div className="absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b from-${p}-500 to-${a}-500 rounded-full"></div>
-            <div className="absolute left-[-4px] top-2 w-3 h-3 rounded-full bg-${p}-500 border-2 border-slate-900 ${anim}"></div>
-            <h2 className="text-2xl font-bold text-${p}-400 mb-4">${esc(sec.title)}</h2>
-            ${listHtml(sec)}${ctaHtml(sec)}
-          </div>
-        </div>
-      </section>`,
-      (sec) => `<section className="py-16 ${bgPat}">
-        <div className="section-container">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            <div className="lg:col-span-2 p-8 rounded-2xl bg-slate-800/80 border border-${p}-500/20">
-              <h2 className="text-2xl font-bold text-white mb-4">${esc(sec.title)}</h2>
-              ${listGridHtml(sec)}${ctaHtml(sec)}
-            </div>
-            <div className="p-6 rounded-2xl bg-gradient-to-br from-${p}-500/10 to-${a}-500/10 border border-${p}-500/30 flex flex-col items-center justify-center">
-              <span className="text-6xl mb-4">${emojis[(idx + 3) % emojis.length]}</span>
-              <p className="text-${bg}-400 text-sm text-center">${esc(trunc(sec.content, 60))}</p>
-            </div>
-          </div>
-        </div>
-      </section>`,
-      (sec) => `<section className="py-16 bg-slate-900/50">
-        <div className="section-container">
-          <div className="flex flex-col md:flex-row md:items-stretch gap-6">
-            <div className="flex-1 p-8 rounded-2xl bg-slate-800/90 border-t-4 border-${p}-500">
-              <h2 className="text-2xl font-bold text-${p}-400 mb-4">${esc(sec.title)}</h2>
-              ${listHtml(sec)}${ctaHtml(sec)}
-            </div>
-            <div className="w-full md:w-48 rounded-2xl bg-slate-800/60 border border-${a}-500/30 flex items-center justify-center shrink-0">
-              <span className="text-6xl">${emojis[(idx + 5) % emojis.length]}</span>
-            </div>
-          </div>
-        </div>
-      </section>`,
-      (sec) => `<section className="py-16 bg-slate-800/30">
-        <div className="section-container">
-          <div className="grid grid-cols-2 md:grid-cols-6 gap-4 auto-rows-[120px]">
-            <div className="col-span-2 row-span-2 p-6 rounded-2xl bg-slate-800/80 border border-${p}-500/20 flex flex-col justify-center">
-              <span className="text-4xl block mb-2">${emojis[idx % emojis.length]}</span>
-              <h2 className="text-lg font-bold text-white mb-1">${esc(sec.title)}</h2>
-              <p className="text-${bg}-400 text-xs">${esc(trunc(sec.content, 80))}</p>
-              ${sec.hasCTA ? `<div className="mt-3">${ctaSecHtml(sec)}</div>` : ''}
-            </div>
-            <div className="p-4 rounded-xl bg-slate-800/60 flex items-center justify-center"><span className="text-3xl">${emojis[(idx + 1) % emojis.length]}</span></div>
-            <div className="p-4 rounded-xl bg-slate-800/60 flex items-center justify-center"><span className="text-3xl">${emojis[(idx + 2) % emojis.length]}</span></div>
-            <div className="col-span-2 p-4 rounded-xl bg-slate-800/60 flex items-center justify-center"><span className="text-3xl">${emojis[(idx + 3) % emojis.length]}</span></div>
-            <div className="p-4 rounded-xl bg-slate-800/60 flex items-center justify-center"><span className="text-3xl">${emojis[(idx + 4) % emojis.length]}</span></div>
-          </div>
-        </div>
-      </section>`,
-      (sec) => `<section className="py-16 ${bgPat}">
-        <div className="section-container max-w-4xl mx-auto">
-          <div className="p-8 md:p-12 rounded-3xl bg-slate-800/80 border-2 border-${p}-500/30 shadow-xl shadow-${p}-500/10">
-            <div className="flex items-start gap-6">
-              <span className="text-5xl flex-shrink-0 ${anim}">${emojis[(idx + 7) % emojis.length]}</span>
-              <div>
-                <h2 className="text-2xl font-bold text-${p}-400 mb-4">${esc(sec.title)}</h2>
-                ${listHtml(sec)}${ctaHtml(sec)}
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>`,
-      (sec) => `<section className="py-16 bg-slate-900/60">
-        <div className="section-container">
-          <div className="grid md:grid-cols-2 gap-8">
-            <div className="p-8 rounded-2xl bg-gradient-to-br from-slate-800 to-slate-800/50 border border-${p}-500/20">
-              <h2 className="text-2xl font-bold text-white mb-4">${esc(sec.title)}</h2>
-              ${listHtml(sec)}${ctaHtml(sec)}
-            </div>
-            <div className="p-8 rounded-2xl bg-gradient-to-br from-slate-800 to-slate-800/50 border border-${a}-500/20">
-              <div className="flex items-center gap-4 mb-4">
-                <span className="text-5xl">${emojis[(idx + 9) % emojis.length]}</span>
-                <p className="text-${bg}-300">${esc(trunc(sec.content, 100))}</p>
-              </div>
-              ${sec.hasCTA ? ctaSecHtml(sec) : ''}
-            </div>
-          </div>
-        </div>
-      </section>`,
-      (sec) => `<section className="py-16 bg-slate-800/40">
-        <div className="section-container">
-          <div className="flex flex-wrap -mx-4">
-            <div className="w-full lg:w-2/3 px-4">
-              <div className="p-8 rounded-2xl bg-slate-800/90 border-r-4 border-${p}-500">
-                <h2 className="text-2xl font-bold text-${p}-400 mb-4">${esc(sec.title)}</h2>
-                ${listHtml(sec)}${ctaHtml(sec)}
-              </div>
-            </div>
-            <div className="w-full lg:w-1/3 px-4 mt-6 lg:mt-0 flex items-center justify-center">
-              <div className="rounded-2xl bg-${p}-500/20 p-8 border border-${p}-500/40">
-                <span className="text-6xl block">${emojis[(idx + 11) % emojis.length]}</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>`,
-      (sec) => `<section className="py-16 ${bgPat}">
-        <div className="section-container">
-          <div className="max-w-2xl">
-            <div className="border-l-4 border-${p}-500 pl-8 py-4">
-              <h2 className="text-2xl font-bold text-${p}-400 mb-4">${esc(sec.title)}</h2>
-              ${listHtml(sec)}${ctaHtml(sec)}
-            </div>
-          </div>
-        </div>
-      </section>`,
-      (sec) => `<section className="py-16 bg-slate-900/50">
-        <div className="section-container">
-          <div className="grid grid-cols-1 md:grid-cols-5 gap-6">
-            <div className="md:col-span-3 p-8 rounded-2xl bg-slate-800/80 border border-${p}-500/20">
-              <span className="text-4xl block mb-4">${emojis[idx % emojis.length]}</span>
-              <h2 className="text-2xl font-bold text-white mb-4">${esc(sec.title)}</h2>
-              ${listHtml(sec)}${ctaHtml(sec)}
-            </div>
-            <div className="md:col-span-2 grid grid-cols-2 gap-4">
-              <div className="rounded-xl bg-slate-800/60 border border-${p}-500/20 flex items-center justify-center"><span className="text-4xl">${emojis[(idx + 1) % emojis.length]}</span></div>
-              <div className="rounded-xl bg-slate-800/60 border border-${a}-500/20 flex items-center justify-center"><span className="text-4xl">${emojis[(idx + 2) % emojis.length]}</span></div>
-            </div>
-          </div>
-        </div>
-      </section>`
-    ];
-      const templateIdx = Math.floor((layoutSeed * 31 + i * 17 + idx * 7) % sectionTemplates.length);
-      return sectionTemplates[templateIdx](sec);
+      let pick;
+      do { pick = Math.floor(Math.random() * 20); } while (used.has(pick) && used.size < 20);
+      used.add(pick);
+      switch (pick) {
+        case 0: return `<section className="py-16 bg-slate-900/60"><div className="section-container"><div className="grid lg:grid-cols-2 gap-12 items-center"><div${idx % 2 ? ' className="lg:order-2"' : ''}><h2 className="text-3xl font-bold text-${p}-400 mb-4">${esc(sec.title)}</h2>${contentHtml(sec)}${cta(sec)}</div><div className="bg-gradient-to-br from-${p}-500/10 to-${a}-500/10 rounded-2xl aspect-video flex items-center justify-center border border-${p}-500/20${idx % 2 ? ' lg:order-1' : ''}"><span className="text-7xl animate-float">${em(i)}</span></div></div></div></section>`;
+        case 1: return `<section className="py-20 bg-gradient-to-r from-${p}-900/30 via-slate-900 to-${a}-900/30"><div className="section-container"><div className="bg-slate-800/50 rounded-3xl p-10 md:p-14 border border-${p}-500/20 backdrop-blur-sm"><h2 className="text-3xl font-bold text-white mb-6">${esc(sec.title)}</h2>${contentHtml(sec)}${cta(sec)}</div></div></section>`;
+        case 2: return `<section className="py-16 bg-slate-800/40"><div className="section-container text-center max-w-3xl mx-auto"><h2 className="text-3xl font-bold text-${p}-400 mb-6">${esc(sec.title)}</h2><div className="text-${bg}-300 leading-relaxed mb-8">${esc(sec.content)}</div>${cta(sec, 1)}</div></section>`;
+        case 3: return `<section className="py-16 bg-slate-900/50"><div className="section-container max-w-4xl mx-auto"><div className="relative pl-10 border-l-4 border-${p}-500"><div className="absolute -left-3 top-0 w-6 h-6 rounded-full bg-${p}-500 border-4 border-slate-900"></div><h2 className="text-2xl font-bold text-${p}-400 mb-4">${esc(sec.title)}</h2>${contentHtml(sec)}${cta(sec, 1)}</div></div></section>`;
+        case 4: return `<section className="py-20 bg-slate-800/30 relative overflow-hidden"><div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_right,rgba(${p === 'amber' ? '251,191,36' : '139,92,246'},0.08)_0%,transparent_60%)]"></div><div className="section-container relative"><div className="grid md:grid-cols-3 gap-6"><div className="md:col-span-2 p-8 rounded-2xl bg-slate-800/80 border-l-4 border-${p}-500"><h2 className="text-2xl font-bold text-${p}-400 mb-4">${esc(sec.title)}</h2>${contentHtml(sec)}${cta(sec)}</div><div className="p-8 rounded-2xl bg-gradient-to-b from-${p}-500/20 to-${a}-500/10 border border-${p}-500/30 flex items-center justify-center"><span className="text-8xl animate-wiggle">${em(i + 3)}</span></div></div></div></section>`;
+        case 5: return `<section className="py-16 bg-slate-900/70"><div className="section-container"><div className="flex flex-col md:flex-row gap-8"><div className="flex-shrink-0 w-20 h-20 rounded-2xl bg-gradient-to-br from-${p}-500 to-${a}-600 flex items-center justify-center text-4xl shadow-lg shadow-${p}-500/30">${em(i + 1)}</div><div className="flex-1"><h2 className="text-2xl font-bold text-white mb-4">${esc(sec.title)}</h2>${contentHtml(sec)}${cta(sec)}</div></div></div></section>`;
+        case 6: return `<section className="py-20 bg-slate-800/50"><div className="section-container max-w-4xl mx-auto"><div className="p-10 rounded-3xl bg-gradient-to-br from-${p}-500/10 via-slate-800/80 to-${a}-500/10 border-2 border-${p}-500/30 shadow-2xl shadow-${p}-500/10"><h2 className="text-3xl font-bold text-center text-white mb-6">${esc(sec.title)}</h2><div className="text-${bg}-300 leading-relaxed text-center text-lg">${esc(sec.content)}</div>${sec.hasCTA ? `<div className="mt-8 text-center"><CTAButton text="${ctaText}" /></div>` : ''}</div></div></section>`;
+        case 7: return `<section className="py-16 bg-slate-900/60"><div className="section-container"><div className="grid md:grid-cols-2 gap-0 rounded-2xl overflow-hidden border border-${p}-500/20"><div className="p-8 bg-slate-800/90"><h2 className="text-2xl font-bold text-${p}-400 mb-4">${esc(sec.title)}</h2>${contentHtml(sec)}</div><div className="p-8 bg-gradient-to-br from-${p}-500/20 to-${a}-500/20 flex flex-col justify-center items-center gap-4"><span className="text-6xl">${em(i + 5)}</span>${cta(sec, 2)}</div></div></div></section>`;
+        case 8: return `<section className="py-16 bg-slate-800/40"><div className="section-container"><div className="max-w-2xl ml-0"><h2 className="text-3xl font-bold text-${p}-400 mb-2">${esc(sec.title)}</h2><div className="w-24 h-1 bg-gradient-to-r from-${p}-500 to-${a}-500 rounded-full mb-6"></div>${contentHtml(sec)}${cta(sec)}</div></div></section>`;
+        case 9: return `<section className="py-20 bg-gradient-to-b from-slate-900 to-slate-800/50"><div className="section-container"><div className="grid lg:grid-cols-5 gap-8"><div className="lg:col-span-3 p-8 rounded-2xl bg-slate-800/60 border border-${p}-500/20"><h2 className="text-2xl font-bold text-white mb-4">${esc(sec.title)}</h2>${contentHtml(sec)}${cta(sec)}</div><div className="lg:col-span-2 flex flex-col gap-4">${[em(i), em(i + 2), em(i + 4)].map((e, j) => `<div className="flex-1 rounded-xl bg-slate-800/80 border border-${j % 2 ? a : p}-500/20 flex items-center justify-center"><span className="text-4xl">${e}</span></div>`).join('')}</div></div></div></section>`;
+        case 10: return `<section className="py-16 bg-slate-900/50"><div className="section-container"><div className="bg-slate-800/80 rounded-2xl border-t-4 border-${p}-500 p-8 md:p-10"><div className="flex items-start gap-6 flex-col md:flex-row"><div className="flex-1"><h2 className="text-2xl font-bold text-${p}-400 mb-4">${esc(sec.title)}</h2>${contentHtml(sec)}</div>${sec.hasCTA ? `<div className="shrink-0 self-center"><CTAButton text="${ctaText}" /></div>` : ''}</div></div></div></section>`;
+        case 11: return `<section className="py-20 bg-slate-800/30"><div className="section-container"><div className="max-w-3xl mx-auto text-center"><div className="w-24 h-24 mx-auto mb-6 rounded-full bg-${p}-500/20 border-2 border-${p}-500/40 flex items-center justify-center"><span className="text-5xl">${em(i + 7)}</span></div><h2 className="text-3xl font-bold text-${p}-400 mb-6">${esc(sec.title)}</h2><p className="text-${bg}-300 leading-relaxed text-lg">${esc(sec.content)}</p>${sec.hasCTA ? `<div className="mt-8"><CTAButton text="${ctaText}" /></div>` : ''}</div></div></section>`;
+        case 12: return `<section className="py-16 bg-slate-900/60"><div className="section-container"><div className="grid lg:grid-cols-2 gap-8"><div className="order-2 lg:order-1 p-8 bg-slate-800/80 rounded-2xl border border-${p}-500/20"><h2 className="text-2xl font-bold text-${p}-400 mb-4">${esc(sec.title)}</h2>${contentHtml(sec)}${cta(sec)}</div><div className="order-1 lg:order-2 flex items-center justify-center"><div className="w-52 h-52 rounded-3xl bg-gradient-to-br from-${p}-500/30 to-${a}-500/30 border-2 border-${p}-500/40 flex items-center justify-center animate-float"><span className="text-8xl">${em(i + 6)}</span></div></div></div></div></section>`;
+        case 13: return `<section className="py-16 bg-slate-800/50"><div className="section-container"><div className="relative pl-8"><div className="absolute left-0 top-0 bottom-0 w-1 rounded-full bg-gradient-to-b from-${p}-500 to-${a}-500"></div><h2 className="text-2xl font-bold text-${p}-400 mb-4">${esc(sec.title)}</h2>${contentHtml(sec)}${cta(sec)}</div></div></section>`;
+        case 14: return `<section className="py-20 bg-gradient-to-br from-${p}-900/20 to-slate-900"><div className="section-container"><div className="flex flex-col lg:flex-row gap-8 items-stretch"><div className="flex-1 p-8 rounded-2xl bg-slate-800/90 border-r-4 border-${p}-500"><h2 className="text-2xl font-bold text-${p}-400 mb-4">${esc(sec.title)}</h2>${contentHtml(sec)}${cta(sec)}</div><div className="w-full lg:w-64 rounded-2xl bg-${p}-500/20 p-8 border border-${p}-500/40 flex items-center justify-center shrink-0"><span className="text-7xl animate-pulse">${em(i + 8)}</span></div></div></div></section>`;
+        case 15: return `<section className="py-16 bg-slate-900/70"><div className="section-container"><div className="max-w-4xl mx-auto"><div className="border-l-4 border-${a}-500 pl-8 py-2"><h2 className="text-2xl font-bold text-${a}-400 mb-4">${esc(sec.title)}</h2>${contentHtml(sec)}${cta(sec, 1)}</div></div></div></section>`;
+        case 16: return `<section className="py-20 bg-slate-800/40"><div className="section-container"><div className="grid md:grid-cols-2 gap-0 rounded-2xl overflow-hidden shadow-2xl"><div className="p-10 bg-gradient-to-br from-${p}-600/20 to-slate-800"><h2 className="text-3xl font-bold text-white mb-6">${esc(sec.title)}</h2>${contentHtml(sec)}</div><div className="p-10 bg-slate-800/90 flex flex-col justify-center">${sec.type === 'list' ? contentHtml(sec) : `<p className="text-${bg}-400 text-lg italic leading-relaxed">"${esc(sec.content).substring(0, 150)}..."</p>`}${cta(sec)}</div></div></div></section>`;
+        case 17: return `<section className="py-16 bg-slate-900/50"><div className="section-container"><div className="grid grid-cols-1 md:grid-cols-5 gap-6"><div className="md:col-span-3 p-8 rounded-2xl bg-slate-800/80 border border-${p}-500/20"><h2 className="text-2xl font-bold text-white mb-4">${esc(sec.title)}</h2>${contentHtml(sec)}${cta(sec)}</div><div className="md:col-span-2 grid grid-cols-2 gap-4">${[em(i), em(i + 1), em(i + 2), em(i + 3)].map((e, j) => `<div className="rounded-xl bg-slate-800/60 border border-${j % 2 ? a : p}-500/20 flex items-center justify-center p-6"><span className="text-4xl">${e}</span></div>`).join('')}</div></div></div></section>`;
+        case 18: return `<section className="py-20 bg-slate-800/30"><div className="section-container max-w-5xl mx-auto"><div className="flex flex-col gap-6"><h2 className="text-3xl font-bold text-${p}-400">${esc(sec.title)}</h2><div className="h-px bg-gradient-to-r from-${p}-500 via-${a}-500 to-transparent"></div>${contentHtml(sec)}${cta(sec)}</div></div></section>`;
+        default: return `<section className="py-16 bg-slate-900/60"><div className="section-container"><div className="max-w-4xl"><h2 className="text-2xl font-bold text-white mb-4">${esc(sec.title)}</h2>${contentHtml(sec)}${cta(sec)}</div></div></section>`;
+      }
     }).join('\n');
   }
 
-  const heroVariant = layoutSeed % 5;
-  const heroAnimClass = ['animate-fade-in', 'animate-scale-in', 'animate-slide-up', 'animate-fade-in', 'animate-scale-in'][heroVariant];
+  const heroVariant = Math.floor(Math.random() * 8);
+  const heroAnimClass = ['animate-fade-in', 'animate-scale-in', 'animate-slide-up', 'animate-fade-in', 'animate-scale-in', 'animate-fade-in', 'animate-scale-in', 'animate-slide-up'][heroVariant];
   const heroGradients = [
     `bg-gradient-to-r from-slate-900/90 via-slate-900/70 to-transparent`,
     `bg-gradient-to-b from-slate-900/80 via-slate-900/60 to-slate-900`,
     `bg-gradient-to-tr from-slate-900/95 via-${p}-900/40 to-transparent`,
     `bg-gradient-to-bl from-${p}-900/50 via-slate-900/80 to-slate-900`,
-    `bg-gradient-to-r from-slate-900 via-slate-900/50 to-${a}-900/30`
+    `bg-gradient-to-r from-slate-900 via-slate-900/50 to-${a}-900/30`,
+    `bg-gradient-to-b from-slate-900/95 to-slate-900/70`,
+    `bg-gradient-to-tl from-slate-900/90 via-${a}-900/30 to-slate-900`,
+    `bg-gradient-to-r from-slate-900/95 via-slate-900/80 to-${p}-900/40`
   ];
   const heroDecorators = [
     `<div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-${p}-500/10 via-transparent to-transparent"></div>`,
     `<div className="absolute top-0 right-0 w-[500px] h-[500px] rounded-full bg-${p}-500/5 blur-3xl"></div><div className="absolute bottom-0 left-0 w-[400px] h-[400px] rounded-full bg-${a}-500/5 blur-3xl"></div>`,
     `<div className="absolute inset-0 bg-[linear-gradient(135deg,transparent_40%,rgba(251,191,36,0.05)_60%,transparent_80%)]"></div>`,
     `<div className="absolute top-20 right-20 w-32 h-32 border border-${p}-500/20 rounded-full animate-pulse"></div><div className="absolute bottom-20 left-20 w-48 h-48 border border-${a}-500/10 rounded-full animate-float"></div>`,
-    `<div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_40%,rgba(251,191,36,0.08)_0%,transparent_50%)]"></div>`
+    `<div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_40%,rgba(251,191,36,0.08)_0%,transparent_50%)]"></div>`,
+    `<div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-slate-900 to-transparent"></div>`,
+    `<div className="absolute inset-0 bg-[radial-gradient(circle_at_70%_30%,rgba(139,92,246,0.1)_0%,transparent_50%)]"></div><div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_80%,rgba(251,191,36,0.06)_0%,transparent_40%)]"></div>`,
+    `<div className="absolute top-10 left-10 w-72 h-72 rounded-full bg-${p}-500/5 blur-3xl animate-float"></div>`
   ];
   const heroLayouts = [
     `<div className="section-container relative z-10 py-20"><div className="max-w-2xl ${heroAnimClass}"><h1 className="text-5xl md:text-6xl font-extrabold text-white mb-6 leading-tight drop-shadow-lg">${heroTitle}</h1><p className="text-xl text-${bg}-200 mb-10 leading-relaxed">${heroSub}</p><div className="flex flex-wrap gap-4"><CTAButton text="${ctaText}" /><CTAButton text="Learn More" variant="secondary" /></div></div></div>`,
     `<div className="section-container relative z-10 py-20 text-center"><div className="max-w-3xl mx-auto ${heroAnimClass}"><h1 className="text-5xl md:text-6xl font-extrabold text-white mb-6 leading-tight">${heroTitle}</h1><p className="text-xl text-${bg}-200 mb-10 leading-relaxed max-w-2xl mx-auto">${heroSub}</p><div className="flex flex-wrap gap-4 justify-center"><CTAButton text="${ctaText}" /><CTAButton text="Learn More" variant="secondary" /></div></div></div>`,
     `<div className="section-container relative z-10 py-20"><div className="grid lg:grid-cols-2 gap-12 items-center"><div className="${heroAnimClass}"><h1 className="text-4xl md:text-5xl font-extrabold text-white mb-6 leading-tight">${heroTitle}</h1><p className="text-lg text-${bg}-200 mb-8 leading-relaxed">${heroSub}</p><div className="flex flex-wrap gap-4"><CTAButton text="${ctaText}" /><CTAButton text="Learn More" variant="secondary" /></div></div><div className="hidden lg:flex items-center justify-center"><span className="text-8xl animate-float">${emojis[layoutSeed % emojis.length]}</span></div></div></div>`,
     `<div className="section-container relative z-10 py-24"><div className="max-w-xl ${heroAnimClass}"><span className="text-6xl block mb-6 animate-wiggle">${emojis[(layoutSeed + 3) % emojis.length]}</span><h1 className="text-4xl md:text-5xl font-extrabold text-white mb-6 leading-tight">${heroTitle}</h1><p className="text-lg text-${bg}-200 mb-8 leading-relaxed">${heroSub}</p><CTAButton text="${ctaText}" /></div></div>`,
-    `<div className="section-container relative z-10 py-20 text-center"><div className="${heroAnimClass}"><div className="inline-block px-6 py-2 rounded-full border border-${p}-500/30 text-${p}-400 text-sm font-semibold mb-6 animate-shimmer">${emojis[layoutSeed % emojis.length]} ${esc(pageName)} ${emojis[(layoutSeed + 1) % emojis.length]}</div><h1 className="text-5xl md:text-6xl font-extrabold text-white mb-6 leading-tight">${heroTitle}</h1><p className="text-xl text-${bg}-200 mb-10 leading-relaxed max-w-2xl mx-auto">${heroSub}</p><div className="flex flex-wrap gap-4 justify-center"><CTAButton text="${ctaText}" /><CTAButton text="Learn More" variant="secondary" /></div></div></div>`
+    `<div className="section-container relative z-10 py-20 text-center"><div className="${heroAnimClass}"><div className="inline-block px-6 py-2 rounded-full border border-${p}-500/30 text-${p}-400 text-sm font-semibold mb-6 animate-shimmer">${emojis[layoutSeed % emojis.length]} ${esc(pageName)} ${emojis[(layoutSeed + 1) % emojis.length]}</div><h1 className="text-5xl md:text-6xl font-extrabold text-white mb-6 leading-tight">${heroTitle}</h1><p className="text-xl text-${bg}-200 mb-10 leading-relaxed max-w-2xl mx-auto">${heroSub}</p><div className="flex flex-wrap gap-4 justify-center"><CTAButton text="${ctaText}" /><CTAButton text="Learn More" variant="secondary" /></div></div></div>`,
+    `<div className="section-container relative z-10 py-24"><div className="max-w-3xl ${heroAnimClass}"><div className="w-16 h-1 bg-gradient-to-r from-${p}-500 to-${a}-500 rounded-full mb-8"></div><h1 className="text-4xl md:text-6xl font-extrabold text-white mb-6 leading-tight">${heroTitle}</h1><p className="text-xl text-${bg}-200 mb-10 leading-relaxed">${heroSub}</p><CTAButton text="${ctaText}" /></div></div>`,
+    `<div className="section-container relative z-10 py-20"><div className="grid lg:grid-cols-5 gap-12 items-center"><div className="lg:col-span-3 ${heroAnimClass}"><p className="text-${p}-400 font-semibold mb-4 uppercase tracking-wider text-sm">${esc(pageName)}</p><h1 className="text-4xl md:text-5xl font-extrabold text-white mb-6 leading-tight">${heroTitle}</h1><p className="text-lg text-${bg}-200 mb-8 leading-relaxed">${heroSub}</p><div className="flex flex-wrap gap-4"><CTAButton text="${ctaText}" /><CTAButton text="Learn More" variant="secondary" /></div></div><div className="lg:col-span-2 hidden lg:block"><div className="p-8 rounded-2xl bg-slate-800/50 backdrop-blur-sm border border-${p}-500/20"><span className="text-7xl block text-center animate-float">${emojis[(layoutSeed + 2) % emojis.length]}</span></div></div></div></div>`,
+    `<div className="section-container relative z-10 py-24 text-center"><div className="${heroAnimClass}"><span className="text-7xl block mb-8 animate-float">${emojis[(layoutSeed + 4) % emojis.length]}</span><h1 className="text-5xl md:text-7xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-${p}-400 via-white to-${a}-400 mb-6 leading-tight">${heroTitle}</h1><p className="text-xl text-${bg}-200 mb-10 leading-relaxed max-w-2xl mx-auto">${heroSub}</p><div className="flex flex-wrap gap-4 justify-center"><CTAButton text="${ctaText}" /></div></div></div>`
   ];
 
   const heroBlock = `
@@ -1287,9 +997,8 @@ function generatePageJsx(pageName, componentName, data, imagePath, offerUrl, col
   const gameGridImport = includeGameGrid ? "import GameGrid from '../components/GameGrid';\n" : '';
   let finalBody = body;
   if (includeGameGrid) {
-    const idx = body.lastIndexOf('<section className="py-20 bg-gradient-to-r');
-    if (idx > 0) finalBody = body.slice(0, idx) + gameGridBlock + '\n      ' + body.slice(idx);
-    else finalBody = body + gameGridBlock;
+    const heroEnd = body.indexOf('</section>') + '</section>'.length;
+    finalBody = body.slice(0, heroEnd) + gameGridBlock + '\n\n      ' + body.slice(heroEnd);
   }
 
   return `${gameGridImport}import SEOHead from '../components/SEOHead';
@@ -1306,18 +1015,14 @@ ${finalBody}
 }
 
 function bottomCTA(p, a, bg, ctaText) {
-  return `
-      <section className="py-20 bg-gradient-to-r from-${p}-600 via-${p}-700 to-${a}-600 text-white relative overflow-hidden">
-        <div className="absolute inset-0 animate-pulse opacity-20 bg-white/10"></div>
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 rounded-full bg-${p}-400/20 blur-3xl animate-pulse"></div>
-        <div className="section-container text-center relative z-10">
-          <h2 className="text-3xl md:text-4xl font-bold mb-6 drop-shadow-lg">Ready to Play?</h2>
-          <p className="text-xl text-${p}-100 mb-8 max-w-2xl mx-auto">
-            Join thousands of winners. Claim your bonus and spin the reels today!
-          </p>
-          <CTAButton text="${ctaText}" />
-        </div>
-      </section>`;
+  const v = Math.floor(Math.random() * 4);
+  const variants = [
+    `<section className="py-20 bg-gradient-to-r from-${p}-600 via-${p}-700 to-${a}-600 text-white relative overflow-hidden"><div className="absolute inset-0 animate-pulse opacity-20 bg-white/10"></div><div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 rounded-full bg-${p}-400/20 blur-3xl animate-pulse"></div><div className="section-container text-center relative z-10"><h2 className="text-3xl md:text-4xl font-bold mb-6 drop-shadow-lg">Ready to Play?</h2><p className="text-xl text-${p}-100 mb-8 max-w-2xl mx-auto">Join thousands of winners. Claim your bonus and spin the reels today!</p><CTAButton text="${ctaText}" /></div></section>`,
+    `<section className="py-24 bg-slate-900 text-white relative overflow-hidden"><div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(251,191,36,0.1)_0%,transparent_60%)]"></div><div className="section-container text-center relative z-10 max-w-3xl mx-auto"><h2 className="text-4xl md:text-5xl font-extrabold mb-6">Start Winning Today</h2><div className="w-20 h-1 bg-gradient-to-r from-${p}-500 to-${a}-500 mx-auto mb-8 rounded-full"></div><p className="text-lg text-${bg}-300 mb-10">Your next big win is just a click away. Join now and get your welcome bonus!</p><CTAButton text="${ctaText}" /></div></section>`,
+    `<section className="py-20 bg-gradient-to-b from-slate-800 to-slate-900 text-white"><div className="section-container"><div className="grid lg:grid-cols-2 gap-12 items-center"><div><h2 className="text-3xl md:text-4xl font-bold mb-4">Don't Miss Out!</h2><p className="text-${bg}-300 text-lg leading-relaxed">Thousands of players are already winning big. Get your welcome bonus and join the action today.</p></div><div className="flex justify-center lg:justify-end"><CTAButton text="${ctaText}" /></div></div></div></section>`,
+    `<section className="py-20 bg-gradient-to-br from-${p}-700 to-${a}-700 text-white relative overflow-hidden"><div className="absolute top-0 right-0 w-80 h-80 rounded-full bg-white/5 blur-3xl -translate-y-1/2 translate-x-1/2"></div><div className="section-container relative z-10"><div className="max-w-xl"><h2 className="text-3xl font-bold mb-4">Your Adventure Awaits</h2><p className="text-${p}-100 mb-8">Sign up now and experience world-class gaming with exclusive bonuses and instant withdrawals.</p><CTAButton text="${ctaText}" /></div></div></section>`
+  ];
+  return '\n      ' + variants[v];
 }
 
 // ── Helpers ────────────────────────────────────────────────────────
@@ -1418,24 +1123,62 @@ function generateAppJsx(pages, brand, indexPage) {
 }
 
 function generateHeaderJsx(pages, brand, offerUrl, colors, indexPage, logoPath = null) {
-  const p = colors.primary, bg = colors.bg;
-  const navLinks = pages.map(pg => `          <Link to="${toSlug(pg, indexPage)}" className="text-${bg}-300 hover:text-${p}-400 font-semibold transition-colors">${pg}</Link>`).join('\n');
-  const mobileLinks = pages.map(pg => `            <Link to="${toSlug(pg, indexPage)}" onClick={() => setOpen(false)} className="block py-2 text-${bg}-300 hover:text-${p}-400 font-semibold">${pg}</Link>`).join('\n');
+  const p = colors.primary, ac = colors.accent, bg = colors.bg;
+  const variant = Math.floor(Math.random() * 4);
   const logoEl = logoPath
     ? `<Link to="/" className="flex items-center shrink-0"><img src="${logoPath}" alt="${brand}" className="h-10 w-auto max-w-[180px] object-contain" /></Link>`
     : `<Link to="/" className="text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-${p}-400 to-${p}-600 hover:from-${p}-300 hover:to-${p}-500 transition-all">${brand}</Link>`;
+  const menuBtn = `<button onClick={() => setOpen(!open)} className="md:hidden p-2 text-${p}-400" aria-label="Toggle menu"><svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">{open ? <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /> : <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />}</svg></button>`;
+  const mobileLinks = pages.map(pg => `            <Link to="${toSlug(pg, indexPage)}" onClick={() => setOpen(false)} className="block py-2.5 text-${bg}-300 hover:text-${p}-400 font-semibold transition-colors">${pg}</Link>`).join('\n');
+  const mobileNav = `{open && (<nav className="md:hidden pb-4 border-t border-${p}-500/30 pt-4">\n${mobileLinks}\n            <a href="${offerUrl}" target="_blank" rel="noopener noreferrer" className="btn-primary text-sm mt-3 text-center block">Play Now</a>\n          </nav>)}`;
 
-  return `import { useState } from 'react';\nimport { Link } from 'react-router-dom';\n\nexport default function Header() {\n  const [open, setOpen] = useState(false);\n\n  return (\n    <header className="w-full order-1 shrink-0 bg-slate-900/95 backdrop-blur-sm border-b border-${p}-500/30 sticky top-0 z-50 shadow-lg shadow-${p}-500/10">\n      <div className="section-container">\n        <div className="flex items-center justify-between h-16">\n          ${logoEl}\n          <nav className="hidden md:flex items-center gap-6">\n${navLinks}\n            <a href="${offerUrl}" target="_blank" rel="noopener noreferrer" className="btn-primary text-sm !py-2 !px-5">Play Now</a>\n          </nav>\n          <button onClick={() => setOpen(!open)} className="md:hidden p-2 text-${p}-400" aria-label="Toggle menu">\n            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">\n              {open ? <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /> : <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />}\n            </svg>\n          </button>\n        </div>\n        {open && (\n          <nav className="md:hidden pb-4 border-t border-${p}-500/30 pt-4">\n${mobileLinks}\n            <a href="${offerUrl}" target="_blank" rel="noopener noreferrer" className="btn-primary text-sm mt-3 text-center block">Play Now</a>\n          </nav>\n        )}\n      </div>\n    </header>\n  );\n}\n`;
+  const navStyles = [
+    pages.map(pg => `          <Link to="${toSlug(pg, indexPage)}" className="text-${bg}-300 hover:text-${p}-400 font-semibold transition-colors">${pg}</Link>`).join('\n'),
+    pages.map(pg => `          <Link to="${toSlug(pg, indexPage)}" className="px-3 py-1.5 rounded-lg text-${bg}-300 hover:bg-${p}-500/20 hover:text-${p}-400 font-medium transition-all">${pg}</Link>`).join('\n'),
+    pages.map(pg => `          <Link to="${toSlug(pg, indexPage)}" className="text-${bg}-400 hover:text-white font-medium relative after:absolute after:bottom-0 after:left-0 after:w-0 after:h-0.5 after:bg-${p}-500 hover:after:w-full after:transition-all">${pg}</Link>`).join('\n'),
+    pages.map(pg => `          <Link to="${toSlug(pg, indexPage)}" className="text-sm uppercase tracking-wider text-${bg}-400 hover:text-${p}-400 font-bold transition-colors">${pg}</Link>`).join('\n')
+  ];
+
+  const headerStyles = [
+    `bg-slate-900/95 backdrop-blur-sm border-b border-${p}-500/30 sticky top-0 z-50 shadow-lg shadow-${p}-500/10`,
+    `bg-slate-950 border-b-2 border-${p}-500/40 sticky top-0 z-50`,
+    `bg-gradient-to-r from-slate-900 via-slate-900/98 to-slate-900 backdrop-blur-md border-b border-slate-700/50 sticky top-0 z-50 shadow-xl`,
+    `bg-slate-900/90 backdrop-blur-lg sticky top-0 z-50 border-b border-${ac}-500/20`
+  ];
+
+  const ctaBtnStyles = [
+    `btn-primary text-sm !py-2 !px-5`,
+    `bg-${p}-500 hover:bg-${p}-600 text-white text-sm font-bold py-2 px-6 rounded-full transition-all shadow-md hover:shadow-${p}-500/40`,
+    `border-2 border-${p}-500 text-${p}-400 hover:bg-${p}-500 hover:text-white text-sm font-bold py-2 px-5 rounded-xl transition-all`,
+    `bg-gradient-to-r from-${p}-500 to-${ac}-500 text-white text-sm font-bold py-2.5 px-6 rounded-lg shadow-lg hover:shadow-${p}-500/50 transition-all hover:-translate-y-0.5`
+  ];
+
+  return `import { useState } from 'react';\nimport { Link } from 'react-router-dom';\n\nexport default function Header() {\n  const [open, setOpen] = useState(false);\n\n  return (\n    <header className="w-full order-1 shrink-0 ${headerStyles[variant]}">\n      <div className="section-container">\n        <div className="flex items-center justify-between h-16">\n          ${logoEl}\n          <nav className="hidden md:flex items-center gap-6">\n${navStyles[variant]}\n            <a href="${offerUrl}" target="_blank" rel="noopener noreferrer" className="${ctaBtnStyles[variant]}">Play Now</a>\n          </nav>\n          ${menuBtn}\n        </div>\n        ${mobileNav}\n      </div>\n    </header>\n  );\n}\n`;
 }
 
 function generateFooterJsx(pages, brand, domain, colors, indexPage, logoPath = null) {
-  const p = colors.primary, bg = colors.bg;
-  const links = pages.map(pg => `            <Link to="${toSlug(pg, indexPage)}" className="text-${bg}-400 hover:text-white transition-colors">${pg}</Link>`).join('\n');
+  const p = colors.primary, ac = colors.accent, bg = colors.bg;
+  const variant = Math.floor(Math.random() * 4);
   const brandEl = logoPath
     ? `<Link to="/" className="inline-block mb-3"><img src="${logoPath}" alt="${brand}" className="h-10 w-auto max-w-[160px] object-contain opacity-90 hover:opacity-100 transition-opacity" /></Link>`
     : `<h3 className="text-xl font-bold text-${p}-400 mb-3">${brand}</h3>`;
+  const copyright = `&copy; {new Date().getFullYear()} ${brand}. 18+ Play responsibly.`;
 
-  return `import { Link } from 'react-router-dom';\n\nexport default function Footer() {\n  return (\n    <footer className="w-full order-5 shrink-0 bg-slate-950 border-t border-${p}-500/20 text-white">\n      <div className="section-container py-12">\n        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">\n          <div>\n            ${brandEl}\n            <p className="text-${bg}-400">Play responsibly. 18+ only. Visit ${domain}.</p>\n          </div>\n          <div>\n            <h4 className="font-semibold mb-3 text-${p}-300">Quick Links</h4>\n            <div className="flex flex-col gap-2">\n${links}\n            </div>\n          </div>\n          <div>\n            <h4 className="font-semibold mb-3 text-${p}-300">Contact</h4>\n            <p className="text-${bg}-400">${domain}</p>\n          </div>\n        </div>\n        <div className="border-t border-slate-700 mt-8 pt-8 text-center text-${bg}-500 text-sm">&copy; {new Date().getFullYear()} ${brand}. 18+ Play responsibly.</div>\n      </div>\n    </footer>\n  );\n}\n`;
+  const footerBodies = [
+    `<div className="grid grid-cols-1 md:grid-cols-3 gap-8">\n          <div>\n            ${brandEl}\n            <p className="text-${bg}-400">Play responsibly. 18+ only. Visit ${domain}.</p>\n          </div>\n          <div>\n            <h4 className="font-semibold mb-3 text-${p}-300">Quick Links</h4>\n            <div className="flex flex-col gap-2">\n${pages.map(pg => `              <Link to="${toSlug(pg, indexPage)}" className="text-${bg}-400 hover:text-white transition-colors">${pg}</Link>`).join('\n')}\n            </div>\n          </div>\n          <div>\n            <h4 className="font-semibold mb-3 text-${p}-300">Contact</h4>\n            <p className="text-${bg}-400">${domain}</p>\n          </div>\n        </div>\n        <div className="border-t border-slate-700 mt-8 pt-8 text-center text-${bg}-500 text-sm">${copyright}</div>`,
+    `<div className="text-center">\n          ${brandEl}\n          <div className="flex flex-wrap justify-center gap-6 my-6">\n${pages.map(pg => `            <Link to="${toSlug(pg, indexPage)}" className="text-${bg}-400 hover:text-${p}-400 font-medium transition-colors">${pg}</Link>`).join('\n')}\n          </div>\n          <p className="text-${bg}-500 text-sm mb-4">Play responsibly. 18+ only.</p>\n          <div className="h-px bg-gradient-to-r from-transparent via-${p}-500/40 to-transparent mb-4"></div>\n          <p className="text-${bg}-600 text-xs">${copyright}</p>\n        </div>`,
+    `<div className="grid grid-cols-1 md:grid-cols-4 gap-6">\n          <div className="md:col-span-2">\n            ${brandEl}\n            <p className="text-${bg}-400 mb-4">Your trusted online casino destination. Play responsibly.</p>\n            <p className="text-${bg}-500 text-sm">${domain}</p>\n          </div>\n          <div>\n            <h4 className="text-sm uppercase tracking-wider font-bold text-${p}-400 mb-4">Pages</h4>\n            <div className="flex flex-col gap-2">\n${pages.slice(0, 4).map(pg => `              <Link to="${toSlug(pg, indexPage)}" className="text-${bg}-400 hover:text-white text-sm transition-colors">${pg}</Link>`).join('\n')}\n            </div>\n          </div>\n          <div>\n            <h4 className="text-sm uppercase tracking-wider font-bold text-${p}-400 mb-4">Info</h4>\n            <div className="flex flex-col gap-2 text-${bg}-400 text-sm">\n              <span>18+ Only</span>\n              <span>Licensed Casino</span>\n              <span>Responsible Gaming</span>\n            </div>\n          </div>\n        </div>\n        <div className="border-t border-slate-800 mt-10 pt-6 flex flex-col sm:flex-row justify-between items-center gap-4">\n          <p className="text-${bg}-600 text-xs">${copyright}</p>\n          <div className="flex gap-4 text-${bg}-500 text-xs">\n${pages.slice(0, 3).map(pg => `            <Link to="${toSlug(pg, indexPage)}" className="hover:text-${p}-400 transition-colors">${pg}</Link>`).join('\n')}\n          </div>\n        </div>`,
+    `<div className="grid grid-cols-2 md:grid-cols-6 gap-6">\n          <div className="col-span-2">\n            ${brandEl}\n            <p className="text-${bg}-500 text-sm">Play responsibly. 18+</p>\n          </div>\n${pages.map(pg => `          <div><Link to="${toSlug(pg, indexPage)}" className="text-${bg}-400 hover:text-${p}-400 text-sm font-medium transition-colors block">${pg}</Link></div>`).join('\n')}\n        </div>\n        <div className="mt-8 pt-6 border-t border-${p}-500/10 text-center text-${bg}-600 text-xs">${copyright}</div>`
+  ];
+
+  const footerStyles = [
+    `bg-slate-950 border-t border-${p}-500/20`,
+    `bg-gradient-to-b from-slate-900 to-slate-950 border-t border-slate-800`,
+    `bg-slate-950`,
+    `bg-slate-900 border-t-2 border-${p}-500/30`
+  ];
+
+  return `import { Link } from 'react-router-dom';\n\nexport default function Footer() {\n  return (\n    <footer className="w-full order-5 shrink-0 ${footerStyles[variant]} text-white">\n      <div className="section-container py-12">\n        ${footerBodies[variant]}\n      </div>\n    </footer>\n  );\n}\n`;
 }
 
 function generateCTAButtonJsx(offerUrl, colors) {
