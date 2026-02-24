@@ -1074,7 +1074,7 @@ function writeConfigFiles(root, brand, projectName, fontSet) {
     private: true,
     version: '1.0.0',
     type: 'module',
-    scripts: { dev: 'vite', build: 'vite build', preview: 'vite preview' },
+    scripts: { dev: 'vite', build: 'node ./node_modules/vite/bin/vite.js build', preview: 'vite preview' },
     dependencies: {
       'react': '^18.3.1', 'react-dom': '^18.3.1',
       'react-router-dom': '^6.28.0', 'react-helmet-async': '^2.0.5'
