@@ -43,7 +43,7 @@ export async function generateImage(pageName, brand, imageStyle) {
   console.log(`[IMG] API: gen.pollinations.ai, Key: ${apiKey ? 'YES' : 'NO'}`);
 
   const params = new URLSearchParams({
-    model: 'flux', //klein //gptimage
+    model: 'klein', //klein //gptimage
     width: '1200',
     height: '630',
     seed: seed.toString()
@@ -93,7 +93,7 @@ export async function generateImage(pageName, brand, imageStyle) {
       if (imageBuffer.length > 500 * 1024) {
         console.log(`[IMG] Image too large (${(imageBuffer.length / 1024).toFixed(0)}KB), requesting smaller...`);
         const smallerParams = new URLSearchParams({
-          model: 'flux', //klein //gptimage
+          model: 'klein', //klein //gptimage
           width: '800',
           height: '420',
           seed: seed.toString()
