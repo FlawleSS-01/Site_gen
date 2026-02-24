@@ -47,7 +47,7 @@ export async function buildProject(zipBuffer) {
     if (!fs.existsSync(path.join(workDir, 'package.json'))) {
       throw new Error('Invalid project: package.json not found');
     }
-    runCmd('npm install', workDir);
+    runCmd('npm install --include=dev', workDir);
     runCmd('npm run build', workDir);
 
     const builtDist = path.join(workDir, 'dist');
