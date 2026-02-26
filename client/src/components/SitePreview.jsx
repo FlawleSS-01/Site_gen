@@ -1,11 +1,10 @@
 import { useState } from 'react';
-import { Download, FolderTree, FileCode, Image, Search, CheckCircle2, Archive, Package } from 'lucide-react';
+import { Download, CheckCircle2, Archive, Package } from 'lucide-react';
 
 export default function SitePreview({ data, onReset }) {
   const [downloading, setDownloading] = useState(false);
   const [building, setBuilding] = useState(false);
-  const { jobId, config } = data;
-  const projectSlug = config.brand.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+  const { jobId } = data;
 
   const handleDownload = async () => {
     setDownloading(true);
@@ -16,7 +15,7 @@ export default function SitePreview({ data, onReset }) {
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `${projectSlug}-project.zip`;
+      a.download = 'site-project.zip';
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
@@ -48,14 +47,14 @@ export default function SitePreview({ data, onReset }) {
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `${projectSlug}-build.zip`;
+      a.download = 'site-build.zip';
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
     } catch (err) {
       console.error('Build download error:', err);
-      alert(err.name === 'AbortError' ? 'Request timed out. Try again.' : (err.message || 'Build failed. Ensure npm and Node.js are installed on the server.'));
+      alert(err.name === 'AbortError' ? 'Request timed out. Try again.' : (err.message || 'Build failed.'));
     } finally {
       setBuilding(false);
     }
@@ -68,19 +67,14 @@ export default function SitePreview({ data, onReset }) {
           <CheckCircle2 className="w-10 h-10 text-white" />
         </div>
         <h2 className="text-3xl font-bold text-slate-800 mb-2">Your Site is Ready!</h2>
-        <p className="text-slate-500 text-lg">
-          <span className="font-semibold text-slate-700">{config.brand}</span> website with {config.pages.length} pages has been generated.
-        </p>
+        <p className="text-slate-500 text-lg">The website has been generated from your archive.</p>
       </div>
 
-      {/* Download cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
         <div className="glass-card p-6 text-center">
           <Archive className="w-10 h-10 text-indigo-500 mx-auto mb-3" />
           <h3 className="text-base font-bold text-slate-800 mb-1">Source Project</h3>
-          <p className="text-xs text-slate-500 mb-4">
-            React + Vite source code
-          </p>
+          <p className="text-xs text-slate-500 mb-4">React + Vite source code</p>
           <button
             onClick={handleDownload}
             disabled={downloading}
@@ -93,9 +87,7 @@ export default function SitePreview({ data, onReset }) {
         <div className="glass-card p-6 text-center">
           <Package className="w-10 h-10 text-emerald-500 mx-auto mb-3" />
           <h3 className="text-base font-bold text-slate-800 mb-1">Production Build</h3>
-          <p className="text-xs text-slate-500 mb-4">
-            Built site (vite build), ready to deploy
-          </p>
+          <p className="text-xs text-slate-500 mb-4">Built site (vite build), ready to deploy</p>
           <button
             onClick={handleDownloadBuild}
             disabled={building}
@@ -107,85 +99,28 @@ export default function SitePreview({ data, onReset }) {
         </div>
       </div>
 
-      {/* Project summary */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
-        <div className="glass-card p-5">
-          <div className="flex items-center gap-3 mb-3">
-            <div className="w-8 h-8 rounded-lg bg-indigo-100 flex items-center justify-center">
-              <FolderTree className="w-4 h-4 text-indigo-600" />
-            </div>
-            <h4 className="font-semibold text-slate-800">Project Structure</h4>
-          </div>
-          <div className="text-sm text-slate-600 font-mono space-y-0.5 bg-slate-50 rounded-lg p-3">
-            <p>/{config.brand.toLowerCase().replace(/[^a-z0-9]+/g, '-')}</p>
-            <p className="pl-3">├── public/</p>
-            <p className="pl-6">├── images/ ({config.pages.length} images)</p>
-            <p className="pl-6">├── sitemap.xml</p>
-            <p className="pl-6">└── robots.txt</p>
-            <p className="pl-3">├── src/</p>
-            <p className="pl-6">├── components/ (4 files)</p>
-            <p className="pl-6">├── pages/ ({config.pages.length} files)</p>
-            <p className="pl-6">├── App.jsx</p>
-            <p className="pl-6">└── main.jsx</p>
-            <p className="pl-3">├── package.json</p>
-            <p className="pl-3">└── README.md</p>
-          </div>
-        </div>
-
-        <div className="space-y-4">
-          <div className="glass-card p-5">
-            <div className="flex items-center gap-3 mb-3">
-              <div className="w-8 h-8 rounded-lg bg-purple-100 flex items-center justify-center">
-                <FileCode className="w-4 h-4 text-purple-600" />
-              </div>
-              <h4 className="font-semibold text-slate-800">Pages</h4>
-            </div>
-            <div className="flex flex-wrap gap-1.5">
-              {config.pages.map(p => (
-                <span key={p} className="tag-pill text-xs">{p}</span>
-              ))}
-            </div>
-          </div>
-
-          <div className="glass-card p-5">
-            <div className="flex items-center gap-3 mb-3">
-              <div className="w-8 h-8 rounded-lg bg-amber-100 flex items-center justify-center">
-                <Image className="w-4 h-4 text-amber-600" />
-              </div>
-              <h4 className="font-semibold text-slate-800">Features</h4>
-            </div>
-            <ul className="text-sm text-slate-600 space-y-1">
-              <li className="flex items-center gap-2">
-                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" /> AI-generated images
-              </li>
-              <li className="flex items-center gap-2">
-                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" /> Custom logo in header & footer
-              </li>
-              <li className="flex items-center gap-2">
-                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" /> SEO meta tags
-              </li>
-              <li className="flex items-center gap-2">
-                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" /> Sitemap & robots.txt
-              </li>
-              <li className="flex items-center gap-2">
-                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" /> Responsive design
-              </li>
-            </ul>
-          </div>
-
-          <div className="glass-card p-5">
-            <div className="flex items-center gap-3 mb-3">
-              <div className="w-8 h-8 rounded-lg bg-emerald-100 flex items-center justify-center">
-                <Search className="w-4 h-4 text-emerald-600" />
-              </div>
-              <h4 className="font-semibold text-slate-800">Quick Start</h4>
-            </div>
-            <div className="text-sm font-mono bg-slate-900 text-slate-100 rounded-lg p-3 space-y-1">
-              <p><span className="text-emerald-400">$</span> npm install</p>
-              <p><span className="text-emerald-400">$</span> npm run dev</p>
-            </div>
-          </div>
-        </div>
+      <div className="glass-card p-5 mb-6">
+        <h4 className="font-semibold text-slate-800 mb-3">Included in your site</h4>
+        <ul className="text-sm text-slate-600 space-y-1.5">
+          <li className="flex items-center gap-2">
+            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" /> AI-generated hero images
+          </li>
+          <li className="flex items-center gap-2">
+            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" /> Logo in header & footer
+          </li>
+          <li className="flex items-center gap-2">
+            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" /> SEO meta tags from content file
+          </li>
+          <li className="flex items-center gap-2">
+            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" /> Sitemap, robots.txt, canonical URLs
+          </li>
+          <li className="flex items-center gap-2">
+            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" /> Verification files (Bing, Google)
+          </li>
+          <li className="flex items-center gap-2">
+            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" /> Responsive design & animations
+          </li>
+        </ul>
       </div>
 
       <div className="text-center">

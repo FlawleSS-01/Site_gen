@@ -1,57 +1,49 @@
 import { useState } from 'react';
-import Wizard from './components/Wizard';
+import ArchiveUpload from './components/ArchiveUpload';
 import GenerationProgress from './components/GenerationProgress';
 import SitePreview from './components/SitePreview';
 import { Sparkles, Globe } from 'lucide-react';
 
-const INITIAL_CONFIG = {
-  brand: '',
-  domain: '',
-  pages: ['Casino', 'Games', 'Bonuses', 'Mobile App', 'Aviator', 'Betting', 'Login'],
-  contentTemplate: '',
-  logoData: null,
-  meta: { title: '{{page}} - {{brand}} | {{domain}}', description: '', keywords: '' },
-  offerUrl: '',
-  imageStyle: 'modern',
-  colorScheme: 'gold'
-};
-
 export default function App() {
-  const [config, setConfig] = useState(INITIAL_CONFIG);
-  const [phase, setPhase] = useState('wizard');
+  const [phase, setPhase] = useState('upload');
   const [jobId, setJobId] = useState(null);
   const [generatedData, setGeneratedData] = useState(null);
 
-  const handleGenerate = async () => {
+  const handleGenerate = async (archiveFile, colorScheme) => {
     try {
-      const res = await fetch('/api/generate', {
+      const formData = new FormData();
+      formData.append('archive', archiveFile);
+      formData.append('colorScheme', colorScheme);
+
+      const res = await fetch('/api/generate-from-archive', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(config)
+        body: formData
       });
+
       const data = await res.json();
       if (!res.ok) {
         alert(data.error || 'Generation failed');
         return;
       }
+
       if (data.jobId) {
         setJobId(data.jobId);
+        setGeneratedData({ jobId: data.jobId });
         setPhase('generating');
       }
     } catch (err) {
       console.error('Failed to start generation:', err);
-      alert('Failed to start generation. Check that the logo is uploaded and try again.');
+      alert('Failed to start generation. Please try again.');
     }
   };
 
   const handleComplete = () => {
-    setGeneratedData({ jobId, config });
+    setGeneratedData(prev => ({ ...prev, jobId }));
     setPhase('preview');
   };
 
   const handleReset = () => {
-    setConfig(INITIAL_CONFIG);
-    setPhase('wizard');
+    setPhase('upload');
     setJobId(null);
     setGeneratedData(null);
   };
@@ -66,10 +58,10 @@ export default function App() {
             </div>
             <div>
               <h1 className="text-lg font-bold text-slate-800">Site Generator</h1>
-              <p className="text-xs text-slate-500 -mt-0.5">SEO-Optimized React Websites</p>
+              <p className="text-xs text-slate-500 -mt-0.5">Archive-Based Generation</p>
             </div>
           </div>
-          {phase !== 'wizard' && (
+          {phase !== 'upload' && (
             <button onClick={handleReset} className="btn-secondary text-sm !py-2 !px-4">
               <Globe className="w-4 h-4" />
               New Project
@@ -79,11 +71,11 @@ export default function App() {
       </header>
 
       <main className="max-w-6xl mx-auto px-4 sm:px-6 py-8">
-        {phase === 'wizard' && (
-          <Wizard config={config} setConfig={setConfig} onGenerate={handleGenerate} />
+        {phase === 'upload' && (
+          <ArchiveUpload onGenerate={handleGenerate} />
         )}
         {phase === 'generating' && (
-          <GenerationProgress jobId={jobId} onComplete={handleComplete} onError={() => setPhase('wizard')} />
+          <GenerationProgress jobId={jobId} onComplete={handleComplete} onError={() => setPhase('upload')} />
         )}
         {phase === 'preview' && (
           <SitePreview data={generatedData} onReset={handleReset} />

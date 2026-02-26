@@ -46,7 +46,7 @@ const ANIMATION_SETS = [
 const LOGO_EXT_MAP = { 'image/png': '.png', 'image/jpeg': '.jpg', 'image/jpg': '.jpg', 'image/svg+xml': '.svg', 'image/webp': '.webp' };
 
 export async function generateProject(config, emitProgress) {
-  const { brand, domain, pages, contentTemplate, logoData, meta, offerUrl, imageStyle, colorScheme } = config;
+  const { brand, domain, pages, contentTemplate, logoData, meta, offerUrl, imageStyle, colorScheme, logoBuffer, logoFilename, verificationFiles, pageMeta } = config;
   const colors = COLOR_SCHEMES[colorScheme] || COLOR_SCHEMES.gold;
   const projectName = brand.toLowerCase().replace(/[^a-z0-9]+/g, '-');
   const fontSet = FONT_SETS[Math.floor(Math.random() * FONT_SETS.length)];
@@ -67,23 +67,40 @@ export async function generateProject(config, emitProgress) {
   writeConfigFiles(root, brand, projectName, fontSet);
 
   let logoPath = null;
-  const logoBase64 = logoData?.base64 || (typeof logoData === 'string' ? logoData : null);
-  if (logoBase64) {
+  if (logoBuffer && logoFilename) {
     try {
-      const match = String(logoBase64).match(/^data:([^;]+);base64,(.+)$/);
-      if (match) {
-        const mime = (match[1] || '').toLowerCase();
-        const buf = Buffer.from(match[2], 'base64');
-        const ext = LOGO_EXT_MAP[mime] || (logoData?.name ? path.extname(logoData.name).toLowerCase() : null) || '.png';
-        const logoFilename = `logo${ext.startsWith('.') ? ext : '.' + ext}`;
-        root.file(`public/${logoFilename}`, buf);
-        logoPath = `/${logoFilename}`;
-        console.log(`[ZIP] Added logo: public/${logoFilename} (${(buf.length / 1024).toFixed(1)} KB)`);
-      } else {
-        console.warn('[Logo] Invalid base64 format, expected data:image/...;base64,...');
-      }
+      const ext = path.extname(logoFilename).toLowerCase() || '.jpg';
+      const destName = `logo${ext}`;
+      root.file(`public/${destName}`, logoBuffer);
+      logoPath = `/${destName}`;
+      console.log(`[ZIP] Added logo from archive: public/${destName} (${(logoBuffer.length / 1024).toFixed(1)} KB)`);
     } catch (e) {
-      console.warn('[Logo] Could not add logo:', e.message);
+      console.warn('[Logo] Could not add logo buffer:', e.message);
+    }
+  } else {
+    const logoBase64 = logoData?.base64 || (typeof logoData === 'string' ? logoData : null);
+    if (logoBase64) {
+      try {
+        const match = String(logoBase64).match(/^data:([^;]+);base64,(.+)$/);
+        if (match) {
+          const mime = (match[1] || '').toLowerCase();
+          const buf = Buffer.from(match[2], 'base64');
+          const ext = LOGO_EXT_MAP[mime] || (logoData?.name ? path.extname(logoData.name).toLowerCase() : null) || '.png';
+          const lf = `logo${ext.startsWith('.') ? ext : '.' + ext}`;
+          root.file(`public/${lf}`, buf);
+          logoPath = `/${lf}`;
+          console.log(`[ZIP] Added logo: public/${lf} (${(buf.length / 1024).toFixed(1)} KB)`);
+        }
+      } catch (e) {
+        console.warn('[Logo] Could not add logo:', e.message);
+      }
+    }
+  }
+
+  if (verificationFiles?.length) {
+    for (const vf of verificationFiles) {
+      root.file(`public/${vf.name}`, vf.buffer);
+      console.log(`[ZIP] Added verification file: public/${vf.name}`);
     }
   }
 
@@ -199,11 +216,15 @@ export async function generateProject(config, emitProgress) {
       sections = await generatePageSections(brand, domain, page, offerUrl);
     }
 
-    const pageMeta = await generateMetaContent(brand, domain, page, meta);
-    const ogTags = generateOpenGraphTags(pageMeta, domain, page, brand);
+    const perPageMeta = pageMeta?.[page];
+    const metaInput = perPageMeta?.keywords || perPageMeta?.description
+      ? { ...meta, perPage: perPageMeta }
+      : meta;
+    const pageMetaResult = await generateMetaContent(brand, domain, page, metaInput);
+    const ogTags = generateOpenGraphTags(pageMetaResult, domain, page, brand);
     const canonical = generateCanonicalUrl(domain, page);
 
-    pageData[page] = { sections, meta: pageMeta, ogTags, canonical };
+    pageData[page] = { sections, meta: pageMetaResult, ogTags, canonical };
   }
 
   step('Generating SEO files...');
@@ -332,8 +353,9 @@ function generatePageJsx(pageName, componentName, data, imagePath, offerUrl, col
     const used = new Set();
     return secsArr.map((sec, i) => {
       const idx = startIdx + i;
+      const totalTemplates = 35;
       let pick;
-      do { pick = Math.floor(Math.random() * 20); } while (used.has(pick) && used.size < 20);
+      do { pick = Math.floor(Math.random() * totalTemplates); } while (used.has(pick) && used.size < totalTemplates);
       used.add(pick);
       switch (pick) {
         case 0: return `<section className="py-16 bg-slate-900/60"><div className="section-container"><div className="grid lg:grid-cols-2 gap-12 items-center"><div${idx % 2 ? ' className="lg:order-2"' : ''}><h2 className="text-3xl font-bold text-${p}-400 mb-4">${esc(sec.title)}</h2>${contentHtml(sec)}${cta(sec)}</div><div className="bg-gradient-to-br from-${p}-500/10 to-${a}-500/10 rounded-2xl aspect-video flex items-center justify-center border border-${p}-500/20${idx % 2 ? ' lg:order-1' : ''}"><span className="text-7xl animate-float">${em(i)}</span></div></div></div></section>`;
@@ -355,6 +377,21 @@ function generatePageJsx(pageName, componentName, data, imagePath, offerUrl, col
         case 16: return `<section className="py-20 bg-slate-800/40"><div className="section-container"><div className="grid md:grid-cols-2 gap-0 rounded-2xl overflow-hidden shadow-2xl"><div className="p-10 bg-gradient-to-br from-${p}-600/20 to-slate-800"><h2 className="text-3xl font-bold text-white mb-6">${esc(sec.title)}</h2>${contentHtml(sec)}</div><div className="p-10 bg-slate-800/90 flex flex-col justify-center">${sec.type === 'list' ? contentHtml(sec) : `<p className="text-${bg}-400 text-lg italic leading-relaxed">"${esc(sec.content).substring(0, 150)}..."</p>`}${cta(sec)}</div></div></div></section>`;
         case 17: return `<section className="py-16 bg-slate-900/50"><div className="section-container"><div className="grid grid-cols-1 md:grid-cols-5 gap-6"><div className="md:col-span-3 p-8 rounded-2xl bg-slate-800/80 border border-${p}-500/20"><h2 className="text-2xl font-bold text-white mb-4">${esc(sec.title)}</h2>${contentHtml(sec)}${cta(sec)}</div><div className="md:col-span-2 grid grid-cols-2 gap-4">${[em(i), em(i + 1), em(i + 2), em(i + 3)].map((e, j) => `<div className="rounded-xl bg-slate-800/60 border border-${j % 2 ? a : p}-500/20 flex items-center justify-center p-6"><span className="text-4xl">${e}</span></div>`).join('')}</div></div></div></section>`;
         case 18: return `<section className="py-20 bg-slate-800/30"><div className="section-container max-w-5xl mx-auto"><div className="flex flex-col gap-6"><h2 className="text-3xl font-bold text-${p}-400">${esc(sec.title)}</h2><div className="h-px bg-gradient-to-r from-${p}-500 via-${a}-500 to-transparent"></div>${contentHtml(sec)}${cta(sec)}</div></div></section>`;
+        case 19: return `<section className="py-20 bg-gradient-to-b from-slate-900 via-${p}-900/10 to-slate-900"><div className="section-container"><div className="grid lg:grid-cols-3 gap-8"><div className="lg:col-span-2"><h2 className="text-3xl font-bold text-white mb-6">${esc(sec.title)}</h2>${contentHtml(sec)}${cta(sec)}</div><div className="bg-slate-800/70 rounded-2xl p-6 border border-${p}-500/20 flex flex-col items-center justify-center gap-4"><span className="text-6xl animate-wiggle">${em(i)}</span><div className="w-full h-px bg-gradient-to-r from-transparent via-${p}-500/40 to-transparent"></div><span className="text-4xl animate-float">${em(i+2)}</span></div></div></div></section>`;
+        case 20: return `<section className="py-16 bg-slate-800/60 relative overflow-hidden"><div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-${p}-500 via-${a}-500 to-${p}-500"></div><div className="section-container"><div className="max-w-4xl mx-auto"><div className="flex items-center gap-4 mb-6"><div className="w-12 h-12 rounded-xl bg-${p}-500/20 flex items-center justify-center text-2xl border border-${p}-500/30">${em(i)}</div><h2 className="text-3xl font-bold text-white">${esc(sec.title)}</h2></div>${contentHtml(sec)}${cta(sec)}</div></div></section>`;
+        case 21: return `<section className="py-20 bg-slate-900/80"><div className="section-container"><div className="grid md:grid-cols-2 gap-12 items-center"><div className="relative"><div className="absolute -inset-4 bg-gradient-to-r from-${p}-500/10 to-${a}-500/10 rounded-3xl blur-xl"></div><div className="relative bg-slate-800/90 rounded-2xl p-8 border border-${p}-500/20"><h2 className="text-2xl font-bold text-${p}-400 mb-4">${esc(sec.title)}</h2>${contentHtml(sec)}${cta(sec)}</div></div><div className="grid grid-cols-2 gap-4">${[em(i), em(i+1), em(i+2), em(i+3)].map((e, j) => `<div className="aspect-square rounded-2xl ${j % 2 === 0 ? `bg-gradient-to-br from-${p}-500/20 to-${a}-500/10` : `bg-slate-800/80`} border border-${p}-500/20 flex items-center justify-center hover:scale-105 transition-transform duration-300"><span className="text-4xl">${e}</span></div>`).join('')}</div></div></div></section>`;
+        case 22: return `<section className="py-16 bg-slate-800/40"><div className="section-container"><div className="bg-slate-900/80 rounded-3xl p-8 md:p-12 relative overflow-hidden"><div className="absolute top-0 right-0 w-64 h-64 bg-${p}-500/5 rounded-full blur-3xl"></div><div className="absolute bottom-0 left-0 w-48 h-48 bg-${a}-500/5 rounded-full blur-3xl"></div><div className="relative"><h2 className="text-3xl font-bold text-${p}-400 mb-2">${esc(sec.title)}</h2><div className="flex gap-2 mb-6">${[1,2,3,4,5].map(() => `<div className="w-8 h-1 rounded-full bg-${p}-500/60"></div>`).join('')}</div>${contentHtml(sec)}${cta(sec)}</div></div></div></section>`;
+        case 23: return `<section className="py-20 bg-gradient-to-r from-slate-900 via-slate-800/50 to-slate-900"><div className="section-container"><div className="flex flex-col md:flex-row gap-8 items-stretch"><div className="flex-1 bg-slate-800/80 rounded-l-2xl p-8 border-y border-l border-${p}-500/20"><h2 className="text-2xl font-bold text-white mb-4">${esc(sec.title)}</h2>${contentHtml(sec)}</div><div className="w-full md:w-48 bg-gradient-to-b from-${p}-500 to-${a}-600 rounded-r-2xl flex flex-col items-center justify-center gap-4 p-6"><span className="text-5xl">${em(i)}</span>${sec.hasCTA ? `<CTAButton text="${ctaText}" variant="secondary" />` : ''}</div></div></div></section>`;
+        case 24: return `<section className="py-16 bg-slate-900/60"><div className="section-container"><div className="max-w-5xl mx-auto"><div className="bg-slate-800/60 rounded-2xl overflow-hidden"><div className="p-6 bg-gradient-to-r from-${p}-500/20 to-${a}-500/10 border-b border-${p}-500/20"><h2 className="text-2xl font-bold text-white flex items-center gap-3"><span className="text-3xl">${em(i)}</span>${esc(sec.title)}</h2></div><div className="p-8">${contentHtml(sec)}${cta(sec)}</div></div></div></div></section>`;
+        case 25: return `<section className="py-20 bg-slate-800/30"><div className="section-container"><div className="grid md:grid-cols-6 gap-6"><div className="md:col-span-4 p-8 rounded-2xl bg-slate-800/80 border border-${p}-500/20 hover:border-${p}-400/40 transition-all"><h2 className="text-2xl font-bold text-${p}-400 mb-4">${esc(sec.title)}</h2>${contentHtml(sec)}${cta(sec)}</div><div className="md:col-span-2 flex flex-col gap-4"><div className="flex-1 rounded-2xl bg-gradient-to-br from-${p}-500/20 to-transparent border border-${p}-500/30 flex items-center justify-center p-6"><span className="text-6xl animate-float">${em(i)}</span></div><div className="flex-1 rounded-2xl bg-gradient-to-tl from-${a}-500/20 to-transparent border border-${a}-500/30 flex items-center justify-center p-6"><span className="text-6xl animate-wiggle">${em(i+4)}</span></div></div></div></div></section>`;
+        case 26: return `<section className="py-16 bg-slate-900/70 relative"><div className="absolute left-0 top-1/2 -translate-y-1/2 w-2 h-32 bg-gradient-to-b from-${p}-500 to-${a}-500 rounded-r-full"></div><div className="section-container"><div className="ml-4 md:ml-8 max-w-3xl"><h2 className="text-3xl font-bold text-white mb-4">${esc(sec.title)}</h2>${contentHtml(sec)}${cta(sec)}</div></div></section>`;
+        case 27: return `<section className="py-20 bg-slate-800/50"><div className="section-container"><div className="max-w-4xl mx-auto bg-gradient-to-br from-${p}-500/5 to-${a}-500/5 rounded-3xl p-1"><div className="bg-slate-900/95 rounded-3xl p-10"><div className="flex flex-col md:flex-row gap-8 items-center"><div className="w-28 h-28 rounded-full bg-gradient-to-br from-${p}-500 to-${a}-600 flex items-center justify-center text-5xl shadow-xl shadow-${p}-500/30 shrink-0 animate-glow">${em(i)}</div><div className="flex-1"><h2 className="text-2xl font-bold text-${p}-400 mb-4">${esc(sec.title)}</h2>${contentHtml(sec)}${cta(sec)}</div></div></div></div></div></section>`;
+        case 28: return `<section className="py-16 bg-gradient-to-b from-slate-800/30 to-slate-900/60"><div className="section-container"><div className="grid sm:grid-cols-2 gap-6"><div className="p-8 rounded-2xl bg-slate-800/80 border-b-4 border-${p}-500"><h2 className="text-xl font-bold text-${p}-400 mb-3">${esc(sec.title)}</h2><p className="text-${bg}-300 leading-relaxed">${esc(sec.content.substring(0, Math.floor(sec.content.length / 2)))}</p></div><div className="p-8 rounded-2xl bg-slate-800/80 border-b-4 border-${a}-500"><p className="text-${bg}-300 leading-relaxed">${esc(sec.content.substring(Math.floor(sec.content.length / 2)))}</p>${cta(sec)}</div></div></div></section>`;
+        case 29: return `<section className="py-20 bg-slate-900/60"><div className="section-container max-w-5xl mx-auto"><div className="text-center mb-10"><h2 className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-${p}-400 via-white to-${a}-400">${esc(sec.title)}</h2></div><div className="bg-slate-800/60 rounded-2xl p-8 md:p-12 border border-${p}-500/10 relative"><div className="absolute top-4 left-4 text-6xl opacity-10 text-${p}-500">"</div>${contentHtml(sec)}${cta(sec)}</div></div></section>`;
+        case 30: return `<section className="py-16 bg-slate-800/40"><div className="section-container"><div className="grid lg:grid-cols-7 gap-6"><div className="lg:col-span-5"><div className="bg-slate-800/80 rounded-2xl p-8 border border-${p}-500/15 h-full"><h2 className="text-2xl font-bold text-${p}-400 mb-4">${esc(sec.title)}</h2>${contentHtml(sec)}${cta(sec)}</div></div><div className="lg:col-span-2 flex flex-col gap-4">${[em(i), em(i+2), em(i+5)].map((e, j) => `<div className="flex-1 rounded-xl bg-gradient-to-br from-${j===0?p:j===1?a:p}-500/15 to-transparent border border-${j===0?p:j===1?a:p}-500/20 flex items-center justify-center"><span className="text-5xl">${e}</span></div>`).join('')}</div></div></div></section>`;
+        case 31: return `<section className="py-20 bg-gradient-to-br from-${a}-900/15 via-slate-900 to-${p}-900/15"><div className="section-container"><div className="max-w-3xl mx-auto"><div className="bg-slate-800/70 rounded-2xl p-8 shadow-xl border border-${p}-500/20 hover:border-${p}-400/40 transition-all duration-500"><div className="flex items-center gap-4 mb-6"><span className="text-4xl">${em(i)}</span><div className="flex-1 h-px bg-gradient-to-r from-${p}-500/50 to-transparent"></div></div><h2 className="text-2xl font-bold text-white mb-4">${esc(sec.title)}</h2>${contentHtml(sec)}${cta(sec)}</div></div></div></section>`;
+        case 32: return `<section className="py-16 bg-slate-900/50"><div className="section-container"><div className="flex flex-col lg:flex-row gap-0 rounded-2xl overflow-hidden border border-${p}-500/20"><div className="lg:w-16 bg-gradient-to-b from-${p}-500 to-${a}-600 flex lg:flex-col items-center justify-center gap-2 p-4"><span className="text-2xl">${em(i)}</span><span className="text-2xl">${em(i+1)}</span></div><div className="flex-1 p-8 bg-slate-800/80"><h2 className="text-2xl font-bold text-${p}-400 mb-4">${esc(sec.title)}</h2>${contentHtml(sec)}${cta(sec)}</div></div></div></section>`;
+        case 33: return `<section className="py-20 bg-slate-800/50"><div className="section-container"><div className="max-w-4xl mx-auto grid gap-6"><div className="bg-slate-900/80 rounded-t-3xl p-8 border border-b-0 border-${p}-500/20"><h2 className="text-2xl font-bold text-${p}-400">${esc(sec.title)}</h2></div><div className="bg-slate-800/80 rounded-b-3xl p-8 border border-t-0 border-${p}-500/20">${contentHtml(sec)}${cta(sec)}</div></div></div></section>`;
         default: return `<section className="py-16 bg-slate-900/60"><div className="section-container"><div className="max-w-4xl"><h2 className="text-2xl font-bold text-white mb-4">${esc(sec.title)}</h2>${contentHtml(sec)}${cta(sec)}</div></div></section>`;
       }
     }).join('\n');
@@ -400,16 +437,22 @@ function generatePageJsx(pageName, componentName, data, imagePath, offerUrl, col
         ${heroLayouts[heroVariant]}
       </section>`;
 
-  const statsVariant = layoutSeed % 3;
+  const statsVariant = layoutSeed % 6;
   const statsStyles = [
     `py-14 bg-gradient-to-r from-${p}-600/20 via-slate-800 to-${a}-600/20 border-y border-${p}-500/20`,
     `py-14 bg-slate-800/80 border-y border-${p}-500/30`,
-    `py-16 bg-gradient-to-b from-slate-900 to-slate-800/50`
+    `py-16 bg-gradient-to-b from-slate-900 to-slate-800/50`,
+    `py-14 bg-slate-900/80 border-y-2 border-${p}-500/40`,
+    `py-16 bg-gradient-to-r from-slate-800 via-slate-900 to-slate-800`,
+    `py-14 bg-slate-800/40 relative overflow-hidden`
   ];
   const statsCardStyles = [
     (val, label) => `<div><p className="text-4xl font-extrabold text-${p}-400">${val}</p><p className="text-${bg}-400 mt-1">${label}</p></div>`,
     (val, label) => `<div className="p-4 rounded-xl border border-${p}-500/20 bg-slate-800/60"><p className="text-3xl font-extrabold text-${p}-400">${val}</p><p className="text-${bg}-400 mt-1 text-sm">${label}</p></div>`,
-    (val, label) => `<div className="flex flex-col items-center"><p className="text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-${p}-400 to-${a}-400">${val}</p><p className="text-${bg}-400 mt-2">${label}</p></div>`
+    (val, label) => `<div className="flex flex-col items-center"><p className="text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-${p}-400 to-${a}-400">${val}</p><p className="text-${bg}-400 mt-2">${label}</p></div>`,
+    (val, label) => `<div className="p-5 rounded-2xl bg-gradient-to-b from-${p}-500/15 to-transparent border border-${p}-500/20"><p className="text-3xl font-extrabold text-white">${val}</p><p className="text-${p}-400 mt-1 text-sm font-semibold">${label}</p></div>`,
+    (val, label) => `<div className="relative"><div className="absolute inset-0 bg-${p}-500/5 rounded-xl blur-xl"></div><div className="relative p-4"><p className="text-4xl font-extrabold text-${p}-400 drop-shadow-lg">${val}</p><p className="text-${bg}-400 mt-1">${label}</p></div></div>`,
+    (val, label) => `<div className="text-center p-4 rounded-2xl bg-slate-800/80 shadow-lg"><p className="text-3xl font-black text-${p}-400">${val}</p><div className="w-8 h-0.5 bg-${p}-500/50 mx-auto my-2 rounded-full"></div><p className="text-${bg}-400 text-xs uppercase tracking-wider font-semibold">${label}</p></div>`
   ];
   const statsFn = statsCardStyles[statsVariant];
   const statsBlock = `
@@ -429,22 +472,28 @@ function generatePageJsx(pageName, componentName, data, imagePath, offerUrl, col
   switch (layout) {
 
     case 'casino-home': {
-      const homeVariant = layoutSeed % 5;
+      const homeVariant = layoutSeed % 8;
       const homeGrids = [
         `grid md:grid-cols-3 gap-8`,
         `grid sm:grid-cols-2 lg:grid-cols-4 gap-6`,
         `grid lg:grid-cols-2 gap-8`,
         `grid sm:grid-cols-2 lg:grid-cols-3 gap-6`,
-        `grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6`
+        `grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6`,
+        `grid md:grid-cols-3 gap-6`,
+        `grid sm:grid-cols-2 gap-8`,
+        `grid lg:grid-cols-4 gap-5`
       ];
-      const homeTake = [3, 4, 2, 4, 5][homeVariant];
+      const homeTake = [3, 4, 2, 4, 5, 3, 4, 4][homeVariant];
       const cardAnims = ['animate-float', 'animate-wiggle', 'animate-pulse', 'animate-bounce', 'animate-glow'];
       const cardStyles = [
         (i) => `group p-8 rounded-2xl border border-${p}-500/20 bg-slate-800/80 hover:border-${p}-400 hover:shadow-xl hover:shadow-${p}-500/20 transition-all duration-300 hover:-translate-y-2`,
         (i) => `group p-6 rounded-3xl bg-gradient-to-br from-slate-800 to-slate-800/60 border border-${p}-500/20 hover:border-${p}-400/60 hover:shadow-2xl transition-all duration-300`,
         (i) => `group p-8 rounded-2xl bg-slate-800/90 border-l-4 border-${p}-500 hover:bg-slate-800 transition-all duration-300`,
         (i) => `group p-6 rounded-2xl bg-gradient-to-b from-${p}-500/10 to-transparent border border-${p}-500/30 hover:shadow-xl hover:shadow-${p}-500/20 transition-all duration-500 hover:scale-[1.02]`,
-        (i) => `group p-8 rounded-2xl bg-slate-800/80 border border-slate-700 hover:border-${a}-500 hover:shadow-lg transition-all duration-300`
+        (i) => `group p-8 rounded-2xl bg-slate-800/80 border border-slate-700 hover:border-${a}-500 hover:shadow-lg transition-all duration-300`,
+        (i) => `group p-8 rounded-3xl bg-gradient-to-tr from-${p}-500/10 via-slate-800/80 to-${a}-500/10 border-2 border-${p}-500/20 hover:border-${p}-400/50 transition-all duration-500 hover:-translate-y-1`,
+        (i) => `group p-6 rounded-2xl bg-slate-800/70 border-b-4 border-${i % 2 ? a : p}-500 hover:bg-slate-800 hover:shadow-xl transition-all duration-300`,
+        (i) => `group p-8 rounded-2xl bg-slate-900/60 border border-${p}-500/30 hover:bg-slate-800/90 hover:shadow-2xl hover:shadow-${p}-500/20 transition-all duration-500 hover:scale-[1.03]`
       ];
       const cardStyle = cardStyles[homeVariant];
       body = `${heroBlock}
@@ -1015,12 +1064,15 @@ ${finalBody}
 }
 
 function bottomCTA(p, a, bg, ctaText) {
-  const v = Math.floor(Math.random() * 4);
+  const v = Math.floor(Math.random() * 7);
   const variants = [
     `<section className="py-20 bg-gradient-to-r from-${p}-600 via-${p}-700 to-${a}-600 text-white relative overflow-hidden"><div className="absolute inset-0 animate-pulse opacity-20 bg-white/10"></div><div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 rounded-full bg-${p}-400/20 blur-3xl animate-pulse"></div><div className="section-container text-center relative z-10"><h2 className="text-3xl md:text-4xl font-bold mb-6 drop-shadow-lg">Ready to Play?</h2><p className="text-xl text-${p}-100 mb-8 max-w-2xl mx-auto">Join thousands of winners. Claim your bonus and spin the reels today!</p><CTAButton text="${ctaText}" /></div></section>`,
     `<section className="py-24 bg-slate-900 text-white relative overflow-hidden"><div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(251,191,36,0.1)_0%,transparent_60%)]"></div><div className="section-container text-center relative z-10 max-w-3xl mx-auto"><h2 className="text-4xl md:text-5xl font-extrabold mb-6">Start Winning Today</h2><div className="w-20 h-1 bg-gradient-to-r from-${p}-500 to-${a}-500 mx-auto mb-8 rounded-full"></div><p className="text-lg text-${bg}-300 mb-10">Your next big win is just a click away. Join now and get your welcome bonus!</p><CTAButton text="${ctaText}" /></div></section>`,
     `<section className="py-20 bg-gradient-to-b from-slate-800 to-slate-900 text-white"><div className="section-container"><div className="grid lg:grid-cols-2 gap-12 items-center"><div><h2 className="text-3xl md:text-4xl font-bold mb-4">Don't Miss Out!</h2><p className="text-${bg}-300 text-lg leading-relaxed">Thousands of players are already winning big. Get your welcome bonus and join the action today.</p></div><div className="flex justify-center lg:justify-end"><CTAButton text="${ctaText}" /></div></div></div></section>`,
-    `<section className="py-20 bg-gradient-to-br from-${p}-700 to-${a}-700 text-white relative overflow-hidden"><div className="absolute top-0 right-0 w-80 h-80 rounded-full bg-white/5 blur-3xl -translate-y-1/2 translate-x-1/2"></div><div className="section-container relative z-10"><div className="max-w-xl"><h2 className="text-3xl font-bold mb-4">Your Adventure Awaits</h2><p className="text-${p}-100 mb-8">Sign up now and experience world-class gaming with exclusive bonuses and instant withdrawals.</p><CTAButton text="${ctaText}" /></div></div></section>`
+    `<section className="py-20 bg-gradient-to-br from-${p}-700 to-${a}-700 text-white relative overflow-hidden"><div className="absolute top-0 right-0 w-80 h-80 rounded-full bg-white/5 blur-3xl -translate-y-1/2 translate-x-1/2"></div><div className="section-container relative z-10"><div className="max-w-xl"><h2 className="text-3xl font-bold mb-4">Your Adventure Awaits</h2><p className="text-${p}-100 mb-8">Sign up now and experience world-class gaming with exclusive bonuses and instant withdrawals.</p><CTAButton text="${ctaText}" /></div></div></section>`,
+    `<section className="py-24 bg-slate-900 text-white relative overflow-hidden"><div className="absolute inset-0"><div className="absolute top-10 left-10 w-72 h-72 bg-${p}-500/5 rounded-full blur-3xl animate-float"></div><div className="absolute bottom-10 right-10 w-96 h-96 bg-${a}-500/5 rounded-full blur-3xl animate-pulse"></div></div><div className="section-container relative z-10"><div className="max-w-4xl mx-auto bg-gradient-to-r from-${p}-500/10 to-${a}-500/10 rounded-3xl p-12 border border-${p}-500/20 text-center backdrop-blur-sm"><h2 className="text-4xl font-extrabold mb-4">Level Up Your Game</h2><p className="text-${bg}-300 text-lg mb-8">Exclusive bonuses, instant payouts, and non-stop action await you.</p><CTAButton text="${ctaText}" /></div></div></section>`,
+    `<section className="py-20 bg-gradient-to-r from-slate-900 via-${p}-900/30 to-slate-900 text-white border-t border-${p}-500/20"><div className="section-container"><div className="flex flex-col md:flex-row items-center justify-between gap-8"><div className="flex-1"><h2 className="text-3xl font-bold mb-2">Claim Your Bonus Now</h2><p className="text-${bg}-400">Limited time offer. Sign up and get 250% welcome bonus + free spins!</p></div><CTAButton text="${ctaText}" /></div></div></section>`,
+    `<section className="py-24 bg-slate-900/90 text-white relative overflow-hidden"><div className="absolute inset-0 bg-[conic-gradient(from_0deg_at_50%_50%,rgba(251,191,36,0.05)_0deg,transparent_60deg,rgba(139,92,246,0.05)_120deg,transparent_180deg,rgba(251,191,36,0.05)_240deg,transparent_300deg)]"></div><div className="section-container relative z-10 text-center"><span className="text-6xl block mb-6 animate-wiggle">🏆</span><h2 className="text-4xl font-extrabold mb-4">Join the Champions</h2><p className="text-${bg}-300 text-lg mb-10 max-w-2xl mx-auto">Every spin is a chance to win. Every bet is a step closer to glory.</p><div className="flex gap-4 justify-center"><CTAButton text="${ctaText}" /><CTAButton text="Learn More" variant="secondary" /></div></div></section>`
   ];
   return '\n      ' + variants[v];
 }

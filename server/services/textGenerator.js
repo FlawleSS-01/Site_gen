@@ -112,6 +112,15 @@ Requirements:
 }
 
 export async function generateMetaContent(brand, domain, pageName, metaTemplate) {
+  if (metaTemplate?.perPage) {
+    const pp = metaTemplate.perPage;
+    return {
+      title: `${pageName} - ${brand} | ${domain}`,
+      description: pp.description || `${pageName} page of ${brand}. Visit ${domain}.`,
+      keywords: pp.keywords || `${brand}, ${pageName}, ${domain}`
+    };
+  }
+
   if (metaTemplate?.title && metaTemplate?.description) {
     return {
       title: replaceVariables(metaTemplate.title, { brand, domain, page: pageName }),
